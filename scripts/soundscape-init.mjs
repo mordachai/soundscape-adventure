@@ -1,16 +1,12 @@
-import SoundscapeAdventureUI from './soundscape-adventure-ui.mjs';
 import constants from './utils/constants.mjs';
 import { init as coreInit } from "./regions.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
+import SoundscapeTab from "./soundscape-tab.mjs";
+
+const cModuleName = "soundscape-adventure";
 /**
- * FOUNDRY HOOKS
+ * Triggers HOOKS
  */
-Hooks.on('renderSidebarTab', (sidebar, html) => {
-    if (sidebar instanceof PlaylistDirectory) {
-        SoundscapeAdventureUI.init(html);
-        coreInit();
-    }
-})
 
 Hooks.on('combatStart', (combat, updateData) => {
     //event: name: "start" region: {id: "combat" }
@@ -26,90 +22,98 @@ Hooks.on('deleteCombat', (combat, updateData) => {
  * MODULE HOOKS
  */
 Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
-    SoundscapeAdventureUI._updateHtml();
+    ui.sidebar.parts[cModuleName].render(true);
+    coreInit();
 });
 
-Hooks.on('SBAdventureNewMood', (moodName, mood) => {
-    /*if (sidebar instanceof PlaylistDirectory) {*/
-    SoundscapeAdventureUI.updateSoundboards();
-    /*}*/
-});
+// Hooks.on('SBAdventureNewMood', (moodName, mood) => {
+//     /*if (sidebar instanceof PlaylistDirectory) {*/
+//     /*}*/
+// });
 
-Hooks.on('SBAdventure-PlayingMood', (soundboardName, moodName, mood) => {
-    /*if (sidebar instanceof PlaylistDirectory) {*/
-    SoundscapeAdventureUI.updateMoodControlsUI(soundboardName, moodName, mood);
-    /*}*/
-});
+// Hooks.on('SBAdventure-PlayingMood', (soundboardName, moodName, mood) => {
+//     /*if (sidebar instanceof PlaylistDirectory) {*/
+//     /*}*/
+// });
 
-Hooks.on('SoundscapeAdventure-ChangeSoundVolume', (id, moodId, mood) => {
-    SoundscapeAdventureUI.updateMoodControlsUI(id, moodId, mood);
-});
+// Hooks.on('SoundscapeAdventure-ChangeSoundVolume', (id, moodId, mood) => {    
+// });
 
 /**
  * Tigger Hooks
  */
+Hooks.on("saveSceneConfig", (sceneConfig, data) => {
+    if (data.name === "My Scene") {
+        data.flags.myModule.customSetting = true; // Add a custom flag
+    }
+    return data; // Return the modified data
+});
 Hooks.on("renderSceneConfig", (app, html, data) => {
-    const originalUpdateObject = app._updateObject.bind(app);
-
-    app._updateObject = async function (event, formData) {
-        const moduleName = "soundscape-adventure"; // Ensure this matches your module name
-        const scene_id = app.object._id;
-        const mood = formData.mood;
-        const soundscape = formData.soundscape;
-        const action = formData.action;
-        const trigger = {
-            action: action,
-            event: "scene",
-            on: `${soundscape}:${mood}`
-        };
-        let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
-        if (!triggerSettings["scenes"]) {
-            triggerSettings["scenes"] = {}
-        }
-
-        triggerSettings["scenes"][app.object._id] = trigger;
-        game.settings.set(constants.STORAGETRIGGERSETTINGS, "triggerSettings", triggerSettings);
-        await originalUpdateObject(event, formData);
-    };
-    const moduleName = "soundscape-adventure"; // Certifique-se de que o nome do módulo corresponde ao nome em module.json
+    const moduleName = "soundscape-adventure";
     let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
     const current = {
         action: "",
         mood: "",
         soundscape: ""
-    }
+    };
+    const sceneId = app.id.replace('SceneConfig-Scene-', '');
     if (triggerSettings["scenes"]) {
-        if (triggerSettings["scenes"][canvas.scene.id]) {
-            const trig = triggerSettings["scenes"][canvas.scene.id];
+        if (triggerSettings["scenes"][sceneId]) {
+            const trig = triggerSettings["scenes"][sceneId];
             current.action = trig.action;
             current.mood = trig.on.split(":")[1];
             current.soundscape = trig.on.split(":")[0];
         }
     }
-    const tabs = html.find(".tabs");
-    tabs.append($('<a class="item" data-tab="my-custom-tab"><i class="fa-solid fa-speaker"></i>&nbsp;Soundscape Adventure</a>'));
 
-    const content = html.find("div.tab[data-group='main'][data-tab='basic']")[0]; //html.find("form");
-    const title = document.createElement("h3");
-    title.textContent = "Play/Stop a mood when a scene is activate";
+    if (!SoundscapeAdventure.soundscapes.hasOwnProperty(current.soundscape)) {
+        ui.notifications.warn("The soundscape " + current.soundscape + " is not available. Reseting scene config.");
+        current.action = "";
+        current.mood = "";
+        current.soundscape = "";
+    } else {
+        const soundscape = SoundscapeAdventure.soundscapes[current.soundscape];
+        if (soundscape) {
+            if (!soundscape.class.moods.hasOwnProperty(current.mood)) {
+                ui.notifications.warn("The mood " + current.mood + " is not available in the soundscape " + current.soundscape + ". Reseting scene config.");
+                current.action = "";
+                current.mood = "";
+                current.soundscape = "";
+            }
+        }
+    }
 
+    // Add tab header
+    const tab_before = html.querySelector('[data-tab="ambience"]');
+    const newItem = document.createElement("a");
+    newItem.dataset.action = "tab";
+    newItem.dataset.group = "sheet";
+    newItem.dataset.tab = "music";
+    newItem.innerHTML = `<i class="fa-solid fa-music" inert=""></i>
+        <span>Music</span>`;
+    tab_before.after(newItem);
+
+    // Create tab body
+    const before_body = html.querySelector('[data-application-part="ambience"]');
     const newNode = document.createElement("div");
-    newNode.className = "tab"
-    newNode.setAttribute("data-group", "main")
-    newNode.setAttribute("data-tab", "my-custom-tab")
-    const soundscapes = SoundscapeAdventure.soundboards;
-    content.insertAdjacentElement('afterend', newNode);
+    newNode.className = "tab";
+    newNode.setAttribute("data-group", "sheet");
+    newNode.setAttribute("data-tab", "music");
+    newNode.setAttribute("data-application-part", "music");
 
+    // Build content
+    const title = document.createElement("h4");
+    title.textContent = "Play or Stop a mood when a scene is activated";
+
+    const soundscapes = SoundscapeAdventure.soundscapes;
     const formGroup1 = document.createElement('div');
     formGroup1.className = 'form-group';
-
     const label1 = document.createElement('label');
     label1.textContent = 'Soundscape';
     formGroup1.appendChild(label1);
-
     const select1 = document.createElement('select');
     select1.name = 'soundscape';
-    select1.className = "soundscape-adventure-soundscape";
+    select1.className = "form-field";
     const option1 = document.createElement('option');
     option1.value = '';
     option1.textContent = 'Select';
@@ -125,29 +129,20 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
         select1.appendChild(option);
     }
 
-
-
-    // Create the second form-group div
     const formGroup2 = document.createElement('div');
     formGroup2.className = 'form-group';
-
-    // Create and append the label for Mood
     const label2 = document.createElement('label');
     label2.textContent = 'Mood';
     formGroup2.appendChild(label2);
-
-    // Create and append the select element for Mood
     const select2 = document.createElement('select');
-    select2.className = "soundscape-adventure-mood";
+    select2.className = "form-field";
     select2.name = 'mood';
-
-    // Create and append the options for Mood
     const option2_1 = document.createElement('option');
     option2_1.value = '';
     select2.appendChild(option2_1);
 
     if (current.soundscape) {
-        const soundscape = SoundscapeAdventure.soundboards[current.soundscape];
+        const soundscape = SoundscapeAdventure.soundscapes[current.soundscape];
         const moods = soundscape.class.moods;
         for (let key in moods) {
             const option2_2 = document.createElement('option');
@@ -160,13 +155,11 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
         }
     }
 
-
-
     select1.addEventListener('change', function () {
         while (select2.firstChild) {
             select2.removeChild(select2.firstChild);
         }
-        const soundboard = SoundscapeAdventure.soundboards[select1.value];
+        const soundboard = SoundscapeAdventure.soundscapes[select1.value];
         if (soundboard) {
             const moods = soundboard.class.moods;
             const soption = document.createElement('option');
@@ -183,14 +176,11 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     });
     formGroup2.appendChild(select2);
 
-    // Action Form
     const actionForm = document.createElement('div');
     actionForm.className = 'form-group';
-
     const actionLabel = document.createElement('label');
     actionLabel.textContent = 'Action';
     actionForm.appendChild(actionLabel);
-
     const actionSelect = document.createElement('select');
     actionSelect.className = "soundscape-adventure-action";
     actionSelect.name = 'action';
@@ -198,13 +188,11 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     action_option_0.value = '';
     action_option_0.textContent = 'Select';
     actionSelect.appendChild(action_option_0);
-
     const action_option_1 = document.createElement('option');
     action_option_1.value = 'play';
     action_option_1.textContent = 'Play';
     if (current.action == "play") action_option_1.selected = "selected";
     actionSelect.appendChild(action_option_1);
-
     const action_option_2 = document.createElement('option');
     action_option_2.value = 'stop';
     action_option_2.textContent = 'Stop';
@@ -212,42 +200,72 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     actionSelect.appendChild(action_option_2);
     actionForm.appendChild(actionSelect);
 
+    const saveBtn = document.createElement('button');
+    saveBtn.className = "btn";
+    saveBtn.textContent = "Save Music Trigger";
+    saveBtn.addEventListener('click', async (event) => {
+        const trigger = {
+            action: actionSelect.value,
+            event: "scene",
+            on: `${select1.value}:${select2.value}`
+        };
+        let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
+        const sceneId = app.id.replace('SceneConfig-Scene-', '');
+        if (!triggerSettings["scenes"]) {
+            triggerSettings["scenes"] = {}
+        }
+
+        triggerSettings["scenes"][sceneId] = trigger;
+        game.settings.set(constants.STORAGETRIGGERSETTINGS, "triggerSettings", triggerSettings);
+        event.preventDefault();
+    });
+
+
+    // Append everything
     newNode.appendChild(title);
     newNode.appendChild(formGroup1);
     newNode.appendChild(formGroup2);
     newNode.appendChild(actionForm);
+    newNode.appendChild(saveBtn);
 
+    before_body.after(newNode);
 });
 
-Hooks.on('updateScene', (scene, data, modified, sceneId) => {
-    if (game.ready && data.active) {
-        let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
-        if (!triggerSettings["scenes"]) {
-            return;
-        }
-        if (!triggerSettings["scenes"][scene.id]) {
-            return
-        }
-        const trigger = triggerSettings["scenes"][scene.id];
-        const action = trigger.action;
-        const on = trigger.on.split(":")
-        const soundscape = on[0];
-        const mood = on[1];
-        if (SoundscapeAdventure.soundboards[soundscape] && data.active) {
-            if (action == "play") {
-                SoundscapeAdventure.soundboards[soundscape].class.playMood(mood);
-            } else {
-                SoundscapeAdventure.soundboards[soundscape].class.stopMood(mood);
-            }
-        }
+
+Hooks.on('updateScene', async (scene, data, modified, sceneId) => {
+    let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
+
+    if (!triggerSettings["scenes"]) {
+        return;
     }
-});
+    if (!triggerSettings["scenes"][scene.id]) {
+        return
+    }
 
-Hooks.on('preUpdateScene', (scene, data, modified, sceneId) => {
-    if (data._id != game.scenes.active._id) {
-        if (data.active == true) {
-            console.log("placeholder to stop mood when scene is deactivated: " + game.scenes.active.name);
+    const trigger = triggerSettings["scenes"][scene.id];
+    const action = trigger.action;
+    const on = trigger.on.split(":")
+    const soundscape = on[0];
+    const mood = on[1];
+
+    if (!SoundscapeAdventure.soundscapes[soundscape]) {
+        return;
+    }
+    if (game.ready && data.active) {
+
+        if (action == "play") {
+            await SoundscapeAdventure.soundscapes[soundscape].class.playMood(mood);
+        } else {
+            await SoundscapeAdventure.soundscapes[soundscape].class.stopMood(mood);
         }
+        // invert the logic, if the trigger is to play a mood when scene is activated, we stop it when scene is deactivated
+        Hooks.call("SoundscapeAdventure-UpdateSidebar");
+    } else if (game.ready && !data.active) {
+        if (action == "play") {
+            await SoundscapeAdventure.soundscapes[soundscape].class.stopMood(mood);
+        }
+
+        Hooks.call("SoundscapeAdventure-UpdateSidebar");
     }
 });
 
@@ -255,25 +273,48 @@ Hooks.on('preUpdateScene', (scene, data, modified, sceneId) => {
  * Custom Handlebars
  */
 Hooks.once('init', () => {
-    Handlebars.registerHelper('eachSoundType', function (array, type, options) {
+    Handlebars.registerHelper('eachSoundType', function (array, options) {
         let result = '';
         let groups = [];
+        //
         array.forEach(el => {
-            if (el.type == type) {
-                // for groups we add only a representation for all sounds
-                result += options.fn(el);
-            } else if (el.group != "") {
-                if ((type + 3) == el.type) {
-                    if (!groups.includes(el.group)) {
-                        groups.push(el.group);
-                        const clone = structuredClone(el);
-                        clone.name = 'Group: ' + el.group,
-                            result += options.fn(clone);
-                    }
+            if (el.group != "") {
+                //if ((type + 3) == el.type) { // type 4 + 3 = 7
+                if (!groups.includes(el.group)) {
+                    
+                    groups.push(el.group);
+                    const clone = structuredClone(el);
+                    clone.name = 'Group: ' + el.group,
+                        result += options.fn(clone);
                 }
+                //}
+            } else {
+                result += options.fn(el);
             }
         });
         return result;
+    });
+
+    Handlebars.registerHelper('eachSoundCategory', function (array, type, options) {
+        let result = '';
+        let categories = {};
+        categories["none"] = [];
+        array.forEach(el => {
+            if (el.type == type) {
+                if (el.category == "") {
+                    categories["none"].push(el)
+                } else if (categories.hasOwnProperty(el.category)) {
+                    categories[el.category].push(el)
+                } else {
+                    categories[el.category] = [];
+                    categories[el.category].push(el)
+                }
+            }
+        });
+        
+        
+        return categories;
+        //return result;
     });
 
     Handlebars.registerHelper('soundStatus', function (modStatus, soundStatus) {
@@ -297,20 +338,14 @@ Hooks.once('init', () => {
     Handlebars.registerHelper('shortenString', function (str) {
         let decodedFileName = decodeURIComponent(str);
         let fileNameWithoutExtension = decodedFileName.replace(/\.[^/.]+$/, "");
-        if (fileNameWithoutExtension && fileNameWithoutExtension.length > 26) {
-            return `${fileNameWithoutExtension.substring(0, 26)}...`;
+        if (fileNameWithoutExtension && fileNameWithoutExtension.length > 16) {
+            return `${fileNameWithoutExtension.substring(0, 16)}...`;
         }
         return fileNameWithoutExtension;
     });
 
     Handlebars.registerHelper('forSoundType', function (options) {
         let result = '';
-
-        result += options.fn({
-            name: "ambience",
-            title: "Ambience",
-            code: constants.SOUNDTYPE.AMBIENCE
-        });
         result += options.fn({
             name: "loop",
             title: "Loop",
@@ -333,17 +368,21 @@ Hooks.once('init', () => {
         return (arg1 == arg2) ? options.fn(this) : options.inverse(this);
     });
 
+    Handlebars.registerHelper('ifNotEquals', function (arg1, arg2, options) {
+        return (arg1 != arg2) ? options.fn(this) : options.inverse(this);
+    });
+
     Handlebars.registerHelper('isPlaying', function (soundId, soundscapeId, moodId, options) {
-        const soundConfig = SoundscapeAdventure.soundboards[soundscapeId].class.moods[moodId].getSound(soundId);
+        const soundConfig = SoundscapeAdventure.soundscapes[soundscapeId].class.moods[moodId].getSound(soundId);
         let sound = {};
         if (soundConfig.group == "") {
-            sound = SoundscapeAdventure.soundboards[soundscapeId].class.playlist.sounds.get(soundId);
+            sound = SoundscapeAdventure.soundscapes[soundscapeId].class.playlist.sounds.get(soundId);
         } else {
 
-            const listSounds = SoundscapeAdventure.soundboards[soundscapeId].class.moods[moodId].getSoundByGroup(soundConfig.group);
+            const listSounds = SoundscapeAdventure.soundscapes[soundscapeId].class.moods[moodId].getSoundByGroup(soundConfig.group);
             sound.playing = false;
             for (let i = 0; i < listSounds.length; i++) {
-                if (SoundscapeAdventure.soundboards[soundscapeId].class.playlist.sounds.get(listSounds[i].id).playing) {
+                if (SoundscapeAdventure.soundscapes[soundscapeId].class.playlist.sounds.get(listSounds[i].id).playing) {
                     sound.playing = true;
                     break;
                 }
@@ -356,4 +395,117 @@ Hooks.once('init', () => {
         }
     })
 
+});
+
+export const cNoteIcon = "fa-speaker";
+export const cFolderIcon = "fa-folder";
+
+/* IN ITIALIZE SBAdventure */
+Hooks.once('ready', async () => {
+    if (!game.user.isGM) {
+        return
+    }
+    // TODO identify how to do this in a better way
+    await new Promise(resolve => {
+        const tryUnlock = () => {
+            if (!foundry.audio.AudioHelper.locked) {
+                document.removeEventListener("click", tryUnlock);
+                document.removeEventListener("keydown", tryUnlock);
+                resolve();
+            }
+        };
+
+        document.addEventListener("click", tryUnlock);
+        document.addEventListener("keydown", tryUnlock);
+    });
+    const current_soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+    const soundscape_list = current_soundscapes.split(";").map(vPath => vPath.trim()).filter(vPath => vPath.length > 0);
+    const validSoundscapes = [];
+    for (const soundscape of soundscape_list) {
+        try {
+            const response = await fetch(soundscape, { method: 'HEAD' });
+
+            if (!response.ok) {
+                // Log or notify about the missing file, but do not stop execution
+                ui.notifications.warn(`Soundscape not found at ${soundscape}. Removing from this world...`);
+            } else {
+                // Only load if the file was found
+                await SoundscapeAdventure.loadSoundscape(soundscape);
+                validSoundscapes.push(soundscape);
+            }
+        } catch (error) {
+            // Catch real fetch errors (e.g., CORS, network issues)
+            ui.notifications.warn(`Error checking soundscape at ${soundscape}. Skipping...`);
+            console.error(error);
+        }
+    }
+    await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
+    Hooks.call("SoundscapeAdventure-UpdateSidebar");
+
+});
+
+Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {
+    ui.sidebar.parts[cModuleName].render(true);
+    if (SoundscapeAdventure.soundscapes[soundscapeId].openUI)
+        SoundscapeAdventure.soundscapes[soundscapeId].openUI.render(true);
+
+
+});
+/* INITIALIZE Sidebar*/
+Hooks.once('ready', () => {
+    const cModuleName = "soundscape-adventure";
+    //alert("Soundscape Adventure Loaded");
+    const cVersion = game.data.release.generation;
+    const cOldSideBarUI = cVersion < 13;
+
+    let vSidebar = cOldSideBarUI ? ui.sidebar._element[0] : ui.sidebar.element;
+    let vNoteTab = document.createElement("section");
+    vNoteTab.classList.add("tab", "sidebar-tab", "playlists-sidebar", "directory", "flexcol");
+    vNoteTab.setAttribute("id", cModuleName);
+    vNoteTab.setAttribute("data-tab", cModuleName);
+    if (!cOldSideBarUI) {
+        vNoteTab.style.background = "var(--sidebar-background, var(--color-cool-5-90))";
+        vNoteTab.style.color = "var(--color-text-primary)";
+    }
+
+    ui[cModuleName] = new SoundscapeTab({ tab: vNoteTab, oldUI: cOldSideBarUI });
+
+    if (cOldSideBarUI) {
+        ui.sidebar.tabs[cModuleName] = ui[cModuleName];
+
+        let vNoteTabButton = document.createElement("a");
+        vNoteTabButton.classList.add("item");
+        vNoteTabButton.setAttribute("data-tab", cModuleName);
+        vNoteTabButton.setAttribute("data-tooltip", "Soundscapes");
+        vNoteTabButton.setAttribute("aria-controls", cModuleName);
+        vNoteTabButton.setAttribute("role", "tab");
+
+        let vNoteIcon = document.createElement("i");
+        vNoteIcon.classList.add("fa-solid", cNoteIcon);
+
+        vNoteTabButton.appendChild(vNoteIcon);
+
+        vSidebar.querySelector("nav").querySelector(`[data-tab="playlists"]`).after(vNoteTabButton);
+        vSidebar.appendChild(vNoteTab);
+    }
+    else {
+        ui.sidebar.parts[cModuleName] = ui[cModuleName];
+        let vNoteListItem = document.createElement("li");
+
+        let vNoteTabButton = document.createElement("button");
+        vNoteTabButton.classList.add("ui-control", "plain", "icon", "fa-solid", cNoteIcon, "item-active");
+        vNoteTabButton.setAttribute("data-action", "tab");
+        vNoteTabButton.setAttribute("role", "tab");
+        vNoteTabButton.setAttribute("data-tab", cModuleName);
+        vNoteTabButton.setAttribute("data-group", "primary");
+        vNoteTabButton.setAttribute("data-tooltip", "Soundscapes");
+        vNoteTabButton.setAttribute("aria-controls", cModuleName);
+        vNoteTabButton.setAttribute("role", "tab");
+
+        vNoteTab.setAttribute("data-group", "primary");
+
+        vNoteListItem.appendChild(vNoteTabButton);
+        vSidebar.querySelector("nav").querySelector(`[data-tab="playlists"]`).parentNode.after(vNoteListItem);
+        vSidebar.querySelector('[id="sidebar-content"]').appendChild(vNoteTab);
+    }
 });

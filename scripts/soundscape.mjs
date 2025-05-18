@@ -1,8 +1,8 @@
 import MoodConfig from "./moodConfig.mjs";
 import constants from "./utils/constants.mjs";
 import utils from "./utils/utils.mjs";
-import SoundscapeAdventure from "./soundscape-adventure.mjs";
-import SoundscapeAdventureUI from "./soundscape-adventure-ui.mjs";
+import { RandomSoundManager } from './RandomSoundManager.mjs';
+
 
 //TODO new behavior:
 // - select global soundscape
@@ -18,56 +18,106 @@ export default class Soundscape {
     soundsConfig; // a list of all sounds available for this soundscape
     path; // the soundscape path
     status; // it identifies if the soundscape is loaded (with a playlist)
-    moodsConfigFile="moods.json";
+    moodsConfigFile = "";
     random_idempotency;
     advice;
-    version=1;
-    visible_off_sounds=false;
+    version = 2;
+    visible_off_sounds = false;
+    activeMoodId = "";
+    //the id of the mood is been displayed on the UI
+    currentMoodOnUI = "";
 
-    constructor(_path, _type=constants.SOUNDSCAPE_TYPE.LOCAL) {
-        this.id = foundry.utils.randomID(16);
+    constructor(_path, _type = constants.SOUNDSCAPE_TYPE.LOCAL) {
+        this.id = foundry.utils.randomID(16); // temp ID
         this.path = _path;
         this.type = _type;
         this.status = "offline";
         this.playlist = null;
         this.soundsConfig = [];
         this.random_idempotency = [];
-        this.name = `${constants.PREFIX}: ${_path.split("/").pop()}`;
+        this.name = `${constants.PREFIX}: ${_path.split("/").pop()}`; // temp Name
         this.moods = {};
+        this.playlistId = "";
+        this.description = "";
+        this.created = "";
+        this.randomSoundManager = new RandomSoundManager();
     }
 
     /** Soundscape configuration */
 
     async init(globalSounds = []) {
-        if (this.type == constants.SOUNDSCAPE_TYPE.LOCAL) {
-            // if there is a playlist with same name, we initialize the soundscape
-            for(let i=0; i < game.playlists._source.length; i++) {
-                if (game.playlists._source[i].name.trim() == this.name.trim()) {    
-                    utils.log(utils.getCallerInfo(),`Found Playlist ${game.playlists._source[i].name}`);
-                    this.playlist = await game.playlists.get(game.playlists._source[i]._id);
-                    this.status = "online";
-                    // recover previous soundscape id
-                    const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes').split(";");
-                    for (let i=0; i< soundscapes.length; i++) {
-                        const soundspace = soundscapes[i].split(",");
-                        if (soundspace[0] == this.name) {
-                            this.id = soundspace[1];
-                        }
-                    }
-                    if (this.playlist.playing) {
-                        const currentPlaying = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
-                    }
-                }
-            }
-            for (let i=0; i < globalSounds.length; i++) {
-                this._newLocalSound(globalSounds[i].name, globalSounds[i].path, globalSounds[i].type, globalSounds[i].group);
-            }
-            
-            await this.init_local();
-            await this.save_soundboard();
-        } else {
-            utils.log(utils.getCallerInfo(),`The type '${this.type}' isn't implemented yet`, constants.LOGLEVEL.ERROR);
+        const response = await fetch(this.path);
+        if (!response.ok) {
+            ui.notifications.error(`Failed to load soundscape configuration from ${this.path}. Please check the path and try again.`);
+            return;
         }
+        const json = await response.json();
+        if (json.version < 2) {
+            ui.notifications.error(`The soundscape version ${json.version} is not supported. Please update the soundscape to version 2 or higher.`);
+            return;
+        }
+        this.id = json.id || foundry.utils.randomID(16);
+        this.name = json.name;
+        this.playlistId = json?.playlistId;
+        this.description = json.description;
+        this.created = json.created;
+        const moods = json.moods;
+        this.moodsConfigFile = this.path.split("/").pop();
+        this.playlist = await game.playlists.get(json.playlistId);
+
+        if (this.playlist == null) {
+            this.playlist = await game.playlists.find(el => el.name == "Soundscape: " + this.name);
+            if (!this.playlist) {
+                // TODO create playlist tries to add the audio files as well
+                await this.createPlaylist(moods);
+            } else {
+                
+                this.playlistId = this.playlist.id;
+                this.saveMoodsConfig();
+            }
+        }
+
+        for (const key in moods) {
+            // TODO send to load mood
+            const moodConfig = new MoodConfig(json.moods[key], this.playlist);
+            await moodConfig.consistence(this.playlist);
+            this.moods[key] = moodConfig;
+            if (moods[key].status == "playing") {
+                this.activeMoodId = key;
+                this.playMood(key, false);
+            }
+        }
+        const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+        if (!soundscapes.includes(this.path)) {
+            await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes + ";" + this.path);
+        }
+    }
+
+    async reloadSoundscape() {
+        this.init();
+    }
+
+    async fileExists(path) {
+        try {
+            const response = await fetch(path);
+            return response.ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async createPlaylist(moods) {
+        const sounds = [];
+        const playlistData = {
+            name: "Soundscape: " + this.name,
+            description: "A playlist created by Soundscape Adventure",
+            mode: CONST.PLAYLIST_MODES.SIMULTANEOUS,
+            sounds: sounds
+        };
+
+        this.playlist = await Playlist.create(playlistData);
+        this.playlistId = this.playlist.id;
+        this.saveMoodsConfig();
     }
 
     async save_soundboard() {
@@ -77,156 +127,85 @@ export default class Soundscape {
         }
         let soundscapes = await game.settings.get(`soundscape-adventure`, "regionSoundscapes");
         soundscapes = Object.assign(obj, soundscapes)
-        game.settings.set(`soundscape-adventure`, "regionSoundscapes",soundscapes);
-        
-    }
-    async init_local() {
-        utils.log(utils.getCallerInfo(),`Init Soundspace '${this.name}' within ${this.path}`);
-        let missing_folders = "<li>Ambience</li><li>Loop</li><li>Random</li><li>Soundpad</li>";
-        const subfolders = await FilePicker.browse('data', this.path, { recursive: false });
-        //load sounds to the soundsConfig
-        utils.log(utils.getCallerInfo(),`Loading sounds from '${this.path}'`);
-        for (const dir of subfolders.dirs) {
-            let sound_type = constants.SOUNDTYPE.INVALID;
-            switch (dir.split("/").pop().toLowerCase()) {
-                case "ambience":
-                    sound_type = constants.SOUNDTYPE.AMBIENCE;
-                    missing_folders = missing_folders.replace("<li>Ambience</li>","");
-                    break;
-                case "random":
-                    sound_type = constants.SOUNDTYPE.RANDOM;
-                    missing_folders = missing_folders.replace("<li>Random</li>","");
-                    break;
-                case "loop":
-                    sound_type = constants.SOUNDTYPE.LOOP;
-                    missing_folders = missing_folders.replace("<li>Loop</li>","");
-                    break;
-                case "soundpad":
-                    sound_type = constants.SOUNDTYPE.SOUNDPAD;
-                    missing_folders = missing_folders.replace("<li>Soundpad</li>","");
-                    break;
-                default:
-                    sound_type = constants.SOUNDTYPE.INVALID;
-                    break;
-            }
-            await this._loadLocalSounds(dir, sound_type);
-        }
+        game.settings.set(`soundscape-adventure`, "regionSoundscapes", soundscapes);
 
-        if (missing_folders.length && !SoundscapeAdventure.ui_soundscape_messages.includes(this.name)) {
-            SoundscapeAdventure.ui_soundscape_messages.push(this.name);
-            const message = `
-            <p>The soundscape's directory supports the directories below:</p>
-            <ul>
-            <li>Ambience: Continuous sounds that play in the background, creating an immersive atmosphere.</li>
-            <li>Loop: These sounds also play continuously but are typically shorter and repeat more frequently compared to ambience sounds.</li>
-            <li>Random: These sounds play at random intervals, adding an element of unpredictability and variety to the soundscape.</li>
-            <li>Soundpad: These sounds are played precisely when clicked. You can use them for specific actions and to enhance the mood whenever you find it necessary.</li>
-            </ul>
-            <p>The Soundscape "${this.name}" within "${this.path}" doesn't contain the folders below. Please add the pending folders to stop receiving this message</p>
-            <ul>
-            ${missing_folders}
-            </ul>`;
-            //const randomNumberInRange = (min, max) => Math.random() * (max - min) + min;
-           foundry.applications.api.DialogV2.prompt({
-                window: { title: this.name  },
-                position: {
-                    width: 550, 
-                    //top: randomNumberInRange(40, 60),
-                    //left: randomNumberInRange(10, 160)
-                },
-                content: message,
-                rejectClose: false,
-                ok: {
-                    label: "Confirm",
-                }
-            });
-
-        }
-        if (this.playlist != null) {
-            await this._syncPlaylist();
-            //await this._syncSoundIds();
-            await this._loadMoods();
-        }
     }
 
     // enable an offiline soundscape means create a playlist
     // and load the moods
-    async enable() {
-        await this._createPlaylist();
-        await this._syncPlaylist();
-        //await this._syncSoundIds();
-        await this._loadMoods();
-        this.status = "online";
-        const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes')
-        await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes + ";" + this.name + "," +this.id);
-        await this.saveMoodsConfig();
-    }
+    // async enable() {
+    //     await this._loadMoods();
+    //     this.status = "online";
+    //     const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes')
+    //     //await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes + ";" + this.name + "," + this.id);
+    //     await this.saveMoodsConfig();
+    // }
 
-    async validateFileExists(filePath) {
-        const directory = filePath.substring(0, filePath.lastIndexOf('/'));
-        const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
-      
-        try {
-          const result = await FilePicker.browse("data", directory);
+    // async validateFileExists(filePath) {
+    //     const directory = filePath.substring(0, filePath.lastIndexOf('/'));
+    //     const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
 
-          if (result.files.includes(filePath)) {
-            return true;
-          } else {
-            return false;
-          }
-        } catch (error) {
-          return false;
-        }
-      }
+    //     try {
+    //         const result = await foundry.applications.apps.FilePicker.browse("data", directory);
 
-    async reScanFolder() {
-        await this.init();
-        await this.saveMoodsConfig();
-    }
+    //         if (result.files.includes(filePath)) {
+    //             return true;
+    //         } else {
+    //             return false;
+    //         }
+    //     } catch (error) {
+    //         return false;
+    //     }
+    // }
+
+    // async reScanFolder() {
+    //     await this.init();
+    //     await this.saveMoodsConfig();
+    // }
 
     //TODO sync playlist needs to be within the moodConfig
     // in the future, drag and drop will allow moods to have
     /// sounds from other soundscapes
-    async _syncPlaylist() {
-        // validates all sounds are in the playlist
-        for (let i = 0; i < this.soundsConfig.length; i++) {
-             const sound = this.playlist.sounds.filter(el => el.path == this.soundsConfig[i].path);
-             if (sound.length == 0) {
-                // need to add the sound
-                this.soundsConfig[i].id = await this._addSoundToPlaylist(this.soundsConfig[i]);
-             } else if (sound.length > 1) {
-                this.soundsConfig[i]. id = sound[0].id;
-                for( let j = 1; j < sound.length; j++) {
-                    // double check that still exists
-                    const sound_to_remove = this.playlist.sounds.find(el => el.id == sound[j].id);
-                    if (sound_to_remove) {
-                        await this.playlist.deleteEmbeddedDocuments("PlaylistSound", [sound_to_remove._id]);
-                    }
-                }
-             } else {
-                this.soundsConfig[i].id = sound[0].id;
-             }
-        }
+    // async _syncPlaylist() {
+    //     // validates all sounds are in the playlist
+    //     for (let i = 0; i < this.soundsConfig.length; i++) {
+    //         const sound = this.playlist.sounds.filter(el => el.path == this.soundsConfig[i].path);
+    //         if (sound.length == 0) {
+    //             // need to add the sound
+    //             this.soundsConfig[i].id = await this._addSoundToPlaylist(this.soundsConfig[i]);
+    //         } else if (sound.length > 1) {
+    //             this.soundsConfig[i].id = sound[0].id;
+    //             for (let j = 1; j < sound.length; j++) {
+    //                 // double check that still exists
+    //                 const sound_to_remove = this.playlist.sounds.find(el => el.id == sound[j].id);
+    //                 if (sound_to_remove) {
+    //                     await this.playlist.deleteEmbeddedDocuments("PlaylistSound", [sound_to_remove._id]);
+    //                 }
+    //             }
+    //         } else {
+    //             this.soundsConfig[i].id = sound[0].id;
+    //         }
+    //     }
 
-        // validates all sounds in the playlist are valid
-        const sounds = this.playlist.sounds;
-        for (let i=0; i < sounds.length; i++) {
-            const fileExists = this.validateFileExists(sounds[i].path);
-            if (!fileExists) {
-                await this.playlist.deleteEmbeddedDocuments("PlaylistSound", [sounds[i]._id]);
-            }
-        }
-    }
+    //     // validates all sounds in the playlist are valid
+    //     const sounds = this.playlist.sounds;
+    //     for (let i = 0; i < sounds.length; i++) {
+    //         const fileExists = this.validateFileExists(sounds[i].path);
+    //         if (!fileExists) {
+    //             await this.playlist.deleteEmbeddedDocuments("PlaylistSound", [sounds[i]._id]);
+    //         }
+    //     }
+    // }
 
-    async _addSoundToPlaylist(newSound) {
-        utils.log(utils.getCallerInfo(),`Adding a new sound '${newSound.path}' to the playlist '${this.playlist.name}'`)
-        await this.playlist.createEmbeddedDocuments("PlaylistSound", [newSound]);
-        const sound = this.playlist.sounds.find(obj => obj.path == newSound.path);
-        return sound.id;
-    }
+    // async _addSoundToPlaylist(newSound) {
+    //     utils.log(utils.getCallerInfo(), `Adding a new sound '${newSound.path}' to the playlist '${this.playlist.name}'`)
+    //     await this.playlist.createEmbeddedDocuments("PlaylistSound", [newSound]);
+    //     const sound = this.playlist.sounds.find(obj => obj.path == newSound.path);
+    //     return sound.id;
+    // }
 
     async _createPlaylist() {
-        utils.log(utils.getCallerInfo(),`Creating playlist '${this.name}'`);
+        utils.log(utils.getCallerInfo(), `Creating playlist '${this.name}'`);
         let newPlaylistData = {
             name: this.name,
             description: "This is a playlist managed by Soundscape Adventure",
@@ -235,145 +214,148 @@ export default class Soundscape {
             mode: 2,  // Play mode: 0 for sequential, 1 for shuffle, 2 for simultaneous
             playing: false,  // Whether the playlist is currently playing
             sounds: this.soundsConfig
-          };
-          
-          // Create the new playlist
-          this.playlist = await Playlist.create(newPlaylistData);
-    }
-
-    async _syncSoundIds() {
-        // it update sound ids from playlist to soundsConfig
-        for (let i = 0; i < this.soundsConfig.length; i++) {
-            const sound = this.playlist.sounds.find(el => el.path == this.soundsConfig[i].path);
-            if (sound) {
-                this.soundsConfig[i].id = sound.id;
-                this.soundsConfig[i]._id = sound._id;
-            }
-        }
-    }
-
-    async _loadLocalSounds(path, type) {
-        utils.log(utils.getCallerInfo(),`Loading local sounds of type '${type}' from '${path}'`)
-        if (type == constants.SOUNDTYPE.INVALID) {
-            return;
-        }
-        try {
-            const subfolder = await FilePicker.browse('data', path, { recursive: false });
-            for (const file of subfolder.files) {
-                const re = /(\.mp3|\.ogg)$/i;
-                if (re.exec(file)) {
-                    if (type == constants.SOUNDTYPE.GROUP_LOOP || type == constants.SOUNDTYPE.GROUP_RANDOM || type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-                        await this._newLocalSound(file.split("/").pop(), file, type, path.split("/").pop());
-                    } else {
-                        await this._newLocalSound(file.split("/").pop(), file, type);
-                    }
-                }
-            }
-            if (type == constants.SOUNDTYPE.LOOP || type == constants.SOUNDTYPE.RANDOM || constants.SOUNDTYPE.SOUNDPAD) {
-                let subfolderType = -1;
-                if (type == constants.SOUNDTYPE.LOOP) subfolderType = constants.SOUNDTYPE.GROUP_LOOP;
-                else if (type == constants.SOUNDTYPE.RANDOM) subfolderType = constants.SOUNDTYPE.GROUP_RANDOM;
-                else if (type == constants.SOUNDTYPE.SOUNDPAD) subfolderType = constants.SOUNDTYPE.GROUP_SOUNDPAD;
-                for (const dir of subfolder.dirs) {
-                    await this._loadLocalSounds(dir, subfolderType);
-                }
-            }
-        } catch (error) {
-            utils.log(utils.getCallerInfo(),`Error loading sounds of type ${type}:`, constants.LOGLEVEL.ERROR, error);
-        }
-    }
-
-    async _newLocalSound(name, path, type, group="") {
-        utils.log(utils.getCallerInfo(),`Adding new local sound ${name} with group '${group}' to the ${this.name}`);
-        let soundData = {
-            _id: foundry.utils.randomID(16),
-            name: name,
-            description: "This sound is managed by the Soundscape Adventure",
-            path: path, // Path to the sound file
-            repeat: (constants.SOUNDTYPE.LOOP === type || constants.SOUNDTYPE.AMBIENCE === type || constants.SOUNDTYPE.GROUP_LOOP === type),// ? false : true,
-            volume: 0,
-            type: type,
-            group: group,
-            from: 10,
-            to: 60,
-            fadeIn: 0,
-            fadeOut: 0,
-            intensity: 0,
-            playOnce: false,
-            category: ""
         };
-        const existing_sound = await this.soundsConfig.find(el => el.path == path);
-        if(!existing_sound) {
-            this.soundsConfig.push(soundData);
-        } else {
-            utils.log(utils.getCallerInfo(),`Sound ${path} is already in the soundscape ${this.name}`);
-        }
+
+        // Create the new playlist
+        this.playlist = await Playlist.create(newPlaylistData);
     }
 
-     /** End soundscape configuration */
+    // async _syncSoundIds() {
+    //     // it update sound ids from playlist to soundsConfig
+    //     for (let i = 0; i < this.soundsConfig.length; i++) {
+    //         const sound = this.playlist.sounds.find(el => el.path == this.soundsConfig[i].path);
+    //         if (sound) {
+    //             this.soundsConfig[i].id = sound.id;
+    //             this.soundsConfig[i]._id = sound._id;
+    //         }
+    //     }
+    // }
+
+    // async _loadLocalSounds(path, type) {
+    //     utils.log(utils.getCallerInfo(), `Loading local sounds of type '${type}' from '${path}'`)
+    //     if (type == constants.SOUNDTYPE.INVALID) {
+    //         return;
+    //     }
+    //     try {
+    //         const subfolder = await foundry.applications.apps.FilePicker.browse('data', path, { recursive: false });
+    //         for (const file of subfolder.files) {
+    //             const re = /(\.mp3|\.ogg)$/i;
+    //             if (re.exec(file)) {
+    //                 if (type == constants.SOUNDTYPE.GROUP_LOOP || type == constants.SOUNDTYPE.GROUP_RANDOM || type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
+    //                     await this._newLocalSound(file.split("/").pop(), file, type, path.split("/").pop());
+    //                 } else {
+    //                     await this._newLocalSound(file.split("/").pop(), file, type);
+    //                 }
+    //             }
+    //         }
+    //         if (type == constants.SOUNDTYPE.LOOP || type == constants.SOUNDTYPE.RANDOM || constants.SOUNDTYPE.SOUNDPAD) {
+    //             let subfolderType = -1;
+    //             if (type == constants.SOUNDTYPE.LOOP) subfolderType = constants.SOUNDTYPE.GROUP_LOOP;
+    //             else if (type == constants.SOUNDTYPE.RANDOM) subfolderType = constants.SOUNDTYPE.GROUP_RANDOM;
+    //             else if (type == constants.SOUNDTYPE.SOUNDPAD) subfolderType = constants.SOUNDTYPE.GROUP_SOUNDPAD;
+    //             for (const dir of subfolder.dirs) {
+    //                 await this._loadLocalSounds(dir, subfolderType);
+    //             }
+    //         }
+    //     } catch (error) {
+    //         utils.log(utils.getCallerInfo(), `Error loading sounds of type ${type}:`, constants.LOGLEVEL.ERROR, error);
+    //     }
+    // }
+
+    // async _newLocalSound(name, path, type, group = "") {
+    //     utils.log(utils.getCallerInfo(), `Adding new local sound ${name} with group '${group}' to the ${this.name}`);
+    //     let soundData = {
+    //         _id: foundry.utils.randomID(16),
+    //         name: name,
+    //         description: "This sound is managed by the Soundscape Adventure",
+    //         path: path, // Path to the sound file
+    //         repeat: (constants.SOUNDTYPE.LOOP === type || constants.SOUNDTYPE.GROUP_LOOP === type),// ? false : true,
+    //         volume: 0,
+    //         type: type,
+    //         group: group,
+    //         from: 10,
+    //         to: 60,
+    //         fadeIn: 0,
+    //         fadeOut: 0,
+    //         intensity: 0,
+    //         playOnce: false,
+    //         category: ""
+    //     };
+    //     const existing_sound = await this.soundsConfig.find(el => el.path == path);
+    //     if (!existing_sound) {
+    //         this.soundsConfig.push(soundData);
+    //     } else {
+    //         utils.log(utils.getCallerInfo(), `Sound ${path} is already in the soundscape ${this.name}`);
+    //     }
+    // }
+
+    /** End soundscape configuration */
 
     /**
      * SOUNDSCAPE CONTROLS
      */
 
     async stopAll() {
-        for (let i=0;i>this.moods.length;i++) {
-            this.moods[i].status="stop";
+        for (let i = 0; i > this.moods.length; i++) {
+            this.moods[i].status = "stop";
         }
-        //this.isPlaying = false;
     }
 
     /**
      * MOOD CONTROLS
      */
-    async newMood(name, _soundsConfig={}) {
+    async newMood(name, _soundsConfig = {}) {
         if (Object.keys(_soundsConfig).length === 0) {
-            _soundsConfig.sounds = this.soundsConfig.slice();
+            _soundsConfig.sounds = [];
             _soundsConfig.name = name;
             _soundsConfig.id = foundry.utils.randomID(16);
             _soundsConfig.active_groups = [];
+            _soundsConfig.categories = [
+                { id: "", name: "None", type: constants.SOUNDTYPE.LOOP, collapsed: false, sounds: [] },
+                { id: "", name: "None", type: constants.SOUNDTYPE.RANDOM, collapsed: false, sounds: [] },
+                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPAD, collapsed: false, sounds: [] }
+            ]
 
         }
-        utils.log(utils.getCallerInfo(),`Create new mood ${name}`);
+        utils.log(utils.getCallerInfo(), `Create new mood ${name}`);
         const mood = new MoodConfig(_soundsConfig, this.playlist);
+        //mood.consistence();
+        await mood.consistence(this.playlist);
         this.moods[_soundsConfig.id] = mood;
         await this.saveMoodsConfig();
-        Hooks.callAll("SBAdventureNewMood", name, mood);
+        Hooks.callAll("SoundscapeAdventure-UpdateSidebar", name, mood);
     }
     async _loadMoods() {
-        utils.log(utils.getCallerInfo(),`Checking moods for ${this.name}`);
-        const folder = await FilePicker.browse('data', this.path, { recursive: false });
+        utils.log(utils.getCallerInfo(), `Checking moods for ${this.name}`);
+        const folder = await foundry.applications.apps.FilePicker.browse('data', this.path, { recursive: false });
         let moodConfigFile = "";
         for (const file of folder.files) {
             if (file.includes(this.moodsConfigFile)) {
                 moodConfigFile = file;
             }
         }
-        if(moodConfigFile.length) {
+        if (moodConfigFile.length) {
             try {
-                utils.log(utils.getCallerInfo(),`Previous mood configuration has been retrieved '${moodConfigFile}'`);
+                utils.log(utils.getCallerInfo(), `Previous mood configuration has been retrieved '${moodConfigFile}'`);
                 const response = await fetch(moodConfigFile);
                 const contents = await response.json();
-                if (contents["version"] != this.version) {
-                    ui.notification.error(`"The supported soundscape version ${this.version} does not match the previous configuration version found: ${content["version"]}.`)
-                    return;
-                }
-                delete contents["version"];
+
                 let name_update = true;
-                for(let key in contents) {
+                for (let key in contents) {
                     const moodconfig = contents[key];
                     if (this.moods[moodconfig.id] == null) {
                         const currentPlaying = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
                         let status = "stop";
-                        if(currentPlaying.length == 2) {
+                        if (currentPlaying.length == 2) {
                             if (currentPlaying[0] == this.id && currentPlaying[1] == moodconfig.id) {
                                 status = "playing";
                             }
                         }
                         this.moods[moodconfig.id] = new MoodConfig(moodconfig, this.playlist, status);
-                        await this.moods[moodconfig.id].syncFolderSounds(this.soundsConfig);
+                        //await this.moods[moodconfig.id].consistence(this.playlist);
+                        //await this.moods[moodconfig.id].syncFolderSounds(this.soundsConfig);
                         if (status == "playing") {
-                            this.playMood(moodconfig.id,false);
+                            this.playMood(moodconfig.id, false);
                         }
                         // update soundscape sound names
                         if (name_update) {
@@ -390,75 +372,119 @@ export default class Soundscape {
                     }
                 }
             } catch (error) {
-                utils.log(utils.getCallerInfo(),`Can't parse file ${moodConfigFile}`, constants.LOGLEVEL.ERROR, error)
+                utils.log(utils.getCallerInfo(), `Can't parse file ${moodConfigFile}`, constants.LOGLEVEL.ERROR, error)
             }
         } else {
-            utils.log(utils.getCallerInfo(),`No configuration found for ${this.name}`);
+            utils.log(utils.getCallerInfo(), `No configuration found for ${this.name}`);
         }
         return;
     }
 
-    async playMood(moodId, saveconfig=true) {
-        const currentconfig = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
-        if (currentconfig.length == 2) {
-            if(currentconfig[0] == this.id && currentconfig[1] != moodId)
-                await this.stopMood(currentconfig[1])
+    async playStopMood(moodId) {
+        if (this.moods[moodId].status == "playing") {
+            this.stopMood(moodId);
+        } else {
+            if (this.activeMoodId && this.activeMoodId != moodId) {
+                await this.stopMood(this.activeMoodId);
+            }
+            await this.playMood(moodId);
         }
-        if (saveconfig) {
-            await game.settings.set('soundscape-adventure', 'current-playing', `${this.id},${moodId}`);
+        if (this.openUI) {
+            this.openUI.render(true);
         }
-        this.moods[moodId].status = "playing";
+        await this.saveMoodsConfig();
+        Hooks.callAll('soundscape-adventure.mood.playStopMood', this.id, moodId, this.moods[moodId]);
+    }
+    async playMood(moodId) {
+        this.activeMoodId = moodId;
         this.isPlaying = true;
-        if(this.moods[moodId]) {
-            const sounds = this.moods[moodId].getEnabledSounds().filter(obj => obj.type != constants.SOUNDTYPE.SOUNDPAD);
+        if (this.moods[moodId]) {
+            const sounds = await this.moods[moodId].getEnabledSounds().filter(obj => obj.type != constants.SOUNDTYPE.SOUNDPAD);
             this.moods[moodId].status = "playing";
-            for (let i=0; i<sounds.length; i++) {
+            // configure sound before playing
+            for (let i = 0; i < sounds.length; i++) {
+                const s = this.playlist.sounds.get(sounds[i].id);
+                if (s) {
+                    if (sounds[i].type == constants.SOUNDTYPE.GROUP_SOUNDPAD || sounds[i].type == constants.SOUNDTYPE.RANDOM || sounds[i].type == constants.SOUNDTYPE.GROUP_RANDOM) {
+                        await s.update({ repeat: false });
+                    } else {
+                        await s.update({ repeat: true });
+                    }
+                }
+            }
+
+            for (let i = 0; i < sounds.length; i++) {
                 await this.playSound(sounds[i], moodId);
             }
         }
     }
 
     async deleteMood(moodId) {
+        this.stopMood(moodId);
         if (this.moods[moodId]) {
             delete this.moods[moodId];
             await this.saveMoodsConfig();
-            SoundscapeAdventure.refreshSoundscapeUI(this.id)
+            Hooks.callAll("SoundscapeAdventure-UpdateSidebar", "", "");
         }
     }
     async stopMood(moodId) {
-        await game.settings.set('soundscape-adventure', 'current-playing', "");
-        this.isPlaying = false;
-        const sounds = this.moods[moodId].getEnabledSounds();
-        for (let i=0; i < sounds.length; i++ ) {
-            this.stopSound(sounds[i], moodId, true);
-        }
-        //await this.playlist.stopAll();
+        
         this.moods[moodId].status = "stop";
-        this.moods[moodId].active_groups = [];
+        if (this.activeMoodId == moodId) {
+            this.activeMoodId = "";
+        }
+        const sounds = await this.moods[moodId].getEnabledSounds();
+        for (let i = 0; i < sounds.length; i++) {
+            await this.stopSound(sounds[i], moodId, true);
+        }
+        this.randomSoundManager.stopAll();
+
+
     }
     async stopAll() {
-        for (let i=0;i>this.moods.length;i++) {
-            this.moods[i].status="stop";
+        for (const key in this.moods) {
+            this.stopMood(key);
         }
         this.isPlaying = false;
     }
     async saveMoodsConfig() {
-        utils.log(utils.getCallerInfo(),`Saving moods for ${this.name} to ${this.path}`)
+        utils.log(utils.getCallerInfo(), `Saving moods for ${this.name} to ${this.path}`)
         let moodsCopy = JSON.parse(JSON.stringify(this.moods));
-        moodsCopy.version = this.version;
+
+        // Save the soundscape to the settings for regions
+        let obj = {};
+        for (let mood in this.moods) {
+            obj[`${this.id}:${mood}`] = `${this.name} -> ${this.moods[mood].name}`
+            this.moods[mood].has_changes = false;
+        }
+        let soundscapes = await game.settings.get(`soundscape-adventure`, "regionSoundscapes");
+        soundscapes = Object.assign(obj, soundscapes)
+        game.settings.set(`soundscape-adventure`, "regionSoundscapes", soundscapes);
 
         for (let key in moodsCopy) {
             if (moodsCopy.hasOwnProperty(key)) {
-                delete moodsCopy[key].active_groups;
-                delete moodsCopy[key].status;
+                //delete moodsCopy[key].active_groups;
+                //delete moodsCopy[key].status;
             }
         }
         try {
-            const blob = new Blob([JSON.stringify(moodsCopy, null, 2)], { type: 'application/json' });
-            const file = new File([blob], this.moodsConfigFile, { type: 'application/json' });
-            await FilePicker.upload('data', this.path, file)
+            const finalJson = {
+                id: this.id,
+                name: this.name,
+                created: this.created,
+                description: this.description,
+                playlistId: this.playlistId,
+                version: this.version,
+                moods: moodsCopy
+            }
+            const parts = decodeURIComponent(this.path).split('/');
+            const filename = parts.pop(); // "soundscape_01.json"
+            const path = parts.join('/'); // "music"
+            const blob = new Blob([JSON.stringify(finalJson, null, 2)], { type: 'application/json' });
+            const file = new File([blob], filename, { type: 'application/json' });
+            await foundry.applications.apps.FilePicker.implementation.upload('data', path, file, {}, { notify: false })
         } catch (error) {
-            utils.log(utils.getCallerInfo(),`Error saving moods for ${this.name}:`, constants.LOGLEVEL.ERROR, error);
+            utils.log(utils.getCallerInfo(), `Error saving moods for ${this.name}:`, constants.LOGLEVEL.ERROR, error);
         }
         const current_play = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
         if (current_play.length == 2) {
@@ -474,49 +500,106 @@ export default class Soundscape {
      * SOUND CONTROLS
      */
 
+    async enableDisableSound(moodId, soundId) {
+        const mood = this.moods[moodId];
+        if (mood) {
+            if (mood.isSoundOn(soundId)) {
+                mood.disableSound(soundId);
+                const s = mood.getSound(soundId);
+                this.stopSound(s, moodId);
+            } else {
+                mood.enableSound(soundId);
+                if (mood.status == "playing") {
+                    const s = mood.getSound(soundId);
+                    if (s) {
+                        this.playSound(s, moodId);
+                    } else {
+                        utils.log(utils.getCallerInfo(), `Sound ${soundId} not found in playlist`, constants.LOGLEVEL.ERROR);
+                    }
+                }
+
+            }
+            mood.has_changes = true;
+        } else {
+            utils.log(utils.getCallerInfo(), `Sound ${soundId} not found in mood ${moodId}`, constants.LOGLEVEL.ERROR);
+        }
+    }
+
+    async enableSound(moodId, soundId) {
+        const mood = this.moods[moodId];
+        if (mood) {
+            if (!mood.isSoundOn(soundId)) {
+                mood.enableSound(soundId);
+                if (mood.isPlaying()) {
+                    const s = mood.getSound(soundId);
+                    if (s) {
+                        this.playSound(s, moodId);
+                    } else {
+                        utils.log(utils.getCallerInfo(), `Sound ${soundId} not found in playlist`, constants.LOGLEVEL.ERROR);
+                    }
+                }
+            }
+            mood.has_changes = true;
+        } else {
+            utils.log(utils.getCallerInfo(), `Sound ${soundId} not found in mood ${moodId}`, constants.LOGLEVEL.ERROR);
+        }
+    }
+
     async changeSoundVolume(moodId, soundId, newVolume) {
         const currentconfig = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
         if (this.moods[moodId]) {
-            const group = this.moods[moodId].getSound(soundId).group;
-            if ( group != "") {
+            const group = this.moods[moodId].getSound(soundId)?.group;
+            if (group != "") {
                 const sounds = this.moods[moodId].getSoundByGroup(group);
                 for (let i = 0; i < sounds.length; i++) {
-                    const sound = this.playlist.sounds.get(sounds[i].id);
-                    if (sound) {
-                        sound.update({ volume: newVolume });
-                        this.moods[moodId].changeSoundVolume(sounds[i].id, newVolume);
-                        if (currentconfig[0] == this.id && currentconfig[1] == moodId) {
-                        } 
-                        Hooks.callAll('SoundscapeAdventure-ChangeSoundVolume', this.id, moodId, this.moods[moodId]);
-                    } else {
-                        utils.log(utils.getCallerInfo(),"Sound not found", constants.LOGLEVEL.ERROR);
+                    this.moods[moodId].changeSoundVolume(sounds[i].id, newVolume);
+                    if (this.moods[moodId].isPlaying()) {
+                        const sound = this.playlist.sounds.get(sounds[i].id);
+                        if (sound) {
+                            sound.update({ volume: newVolume });
+                        }
                     }
                 }
             } else {
                 const sound = this.playlist.sounds.get(soundId);
                 const soundConfig = this.moods[moodId].getSound(soundId);
-                if (sound) {
-                    sound.update({ volume: newVolume });
-                    this.moods[moodId].changeSoundVolume(soundId, newVolume);
-                } else {
-                    utils.log(utils.getCallerInfo(),"Sound not found", constants.LOGLEVEL.ERROR);
-                }   
+                this.moods[moodId].changeSoundVolume(soundId, newVolume);
+                if (this.moods[moodId].isPlaying()) {
+                    if (sound) {
+                        sound.update({ volume: newVolume });
+                    }
+                }
             }
+            Hooks.callAll('SoundscapeAdventure-ChangeSoundVolume', this.id, moodId, this.moods[moodId]);
+            this.moods[moodId].has_changes = true;
         }
     }
 
-    async stopSound(soundConfig, moodId, stop_mood=false) {
+    async stopSound(soundConfig, moodId, stop_mood = false) {
+        
         if (soundConfig.type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-                const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
-                for (let i=0; i < sounds.length; i++) {
-                    this.playlist.stopSound({ id: sounds[i].id });
-                }
+            const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
+            for (let i = 0; i < sounds.length; i++) {
+                await this.playlist.stopSound({ id: sounds[i].id });
+            }
+        } else if (soundConfig.type == constants.SOUNDTYPE.GROUP_RANDOM) {
+            const grupoofsounds = this.moods[moodId].getSoundByGroup(soundConfig.group).map(sound => sound.id);
+            this.randomSoundManager.stop(this.playlistId, grupoofsounds);
+            await grupoofsounds.forEach(async (sound) => {
+                await this.playlist.stopSound({ id: sound });
+            });
+
+        } else if (soundConfig.type == constants.SOUNDTYPE.RANDOM) {
+            this.randomSoundManager.stop(this.playlistId, soundConfig.id);
+        } else if (soundConfig.type == constants.SOUNDTYPE.GROUP_LOOP) {
+            const soundGroup = this.moods[moodId].getSoundByGroup(soundConfig.group).map(sound => sound.id);
+            this.moods[moodId].getSoundByGroup(soundConfig.group).forEach(async (sound) => {
+                await this.playlist.stopSound(sound);
+            });
         } else {
             const s = await this.playlist.sounds.get(soundConfig.id);
             if (s) {
                 await s.load();
-                if (!stop_mood)
-                    this.moods[moodId].disableSound(soundConfig.id);
                 if (s.playing) {
                     await s.sound.load();
                     if (soundConfig.fadeOut > 0 && s.sound.currentTime > soundConfig.fadeIn) {
@@ -527,18 +610,18 @@ export default class Soundscape {
                         if (remaining_time < soundConfig.fadeOut) {
                             fadeOut = remaining_time;
                         }
-                        s.sound.fade(0, { duration: fadeOut * 1000, from: s.sound.volume }).then( () => {
-                            this.playlist.stopSound(s);
+                        s.sound.fade(0, { duration: fadeOut * 1000, from: s.sound.volume }).then(async () => {
+                            await this.playlist.stopSound(s);
                         })
                     } else {
-                        this.playlist.stopSound(s)
+                        await this.playlist.stopSound(s)
                     }
                     if (soundConfig.group != "") {
                         this.moods[moodId].active_groups = this.moods[moodId].active_groups.filter(item => item != soundConfig.group);
                     }
                 }
             }
-                
+
         }
     }
 
@@ -550,49 +633,58 @@ export default class Soundscape {
     }
 
     async playSound(soundConfig, moodId) {
-        if (this.moods[moodId].status != "playing" 
-            && !(soundConfig.type == constants.SOUNDTYPE.GROUP_SOUNDPAD || soundConfig.type == constants.SOUNDTYPE.SOUNDPAD))
-            return;
+        const isPlayingMood = this.moods[moodId].status === "playing";
+        const isSoundpad = soundConfig.type === constants.SOUNDTYPE.GROUP_SOUNDPAD ||
+            soundConfig.type === constants.SOUNDTYPE.SOUNDPAD;
+
+        if (!isPlayingMood && isSoundpad) return;
         if (soundConfig.volume == 0) {
             ui.notifications.warn(`The Sound ${soundConfig.name} is muted. Change the volume before hitting play.`)
         }
-        if (soundConfig.type == constants.SOUNDTYPE.GROUP_RANDOM) {
-            if(!(this.moods[moodId].active_groups.includes(soundConfig.group))) {
-                this.moods[moodId].active_groups.push(soundConfig.group);
-                this.playFromGroup(soundConfig.group, moodId);
-            }
-           
-        } if (soundConfig.type == constants.SOUNDTYPE.GROUP_LOOP) {
-            if(!(this.moods[moodId].active_groups.includes(soundConfig.group))) {
-                this.moods[moodId].active_groups.push(soundConfig.group);
-                this.playFromGroup(soundConfig.group, moodId);
-            }
-        } else if (soundConfig.type == constants.SOUNDTYPE.LOOP || soundConfig.type == constants.SOUNDTYPE.AMBIENCE) {
-            const s = await this.playlist.sounds.get(soundConfig.id);
-            this.moods[moodId].enableSound(soundConfig.id);
-            this._playSound(soundConfig, s)
-            
-        } else if (soundConfig.type == constants.SOUNDTYPE.RANDOM) {
-            this.moods[moodId].enableSound(soundConfig.id);
-            this.playAfterDuration2([soundConfig], moodId, soundConfig.group, utils.randomWaitTime(soundConfig.from, soundConfig.to));
-        } else if (soundConfig.type == constants.SOUNDTYPE.SOUNDPAD) {
-            const s = await this.playlist.sounds.get(soundConfig.id);
-            this._playSound(soundConfig, s);
-        } else if (soundConfig.type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-            const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
-            const randomIndex = Math.floor(Math.random() * sounds.length);
-            const s = await this.playlist.sounds.get(sounds[randomIndex].id);
-            await this._playSound(soundConfig, s);
+        switch (soundConfig.type) {
+            case constants.SOUNDTYPE.GROUP_RANDOM:
+                if (this.moods[moodId].active_groups.includes(soundConfig.group)) {
+                    if (!this.moods[moodId].active_groups.includes(soundConfig.group)) {
+                        this.moods[moodId].active_groups.push(soundConfig.group);
+                    }
+                    const grupoofsounds = this.moods[moodId].getSoundByGroup(soundConfig.group).map(sound => sound.id);
+                    for (let i = 0; i < grupoofsounds.length; i++) {
+                        const sound = await this.playlist.sounds.get(grupoofsounds[i]);
+                        sound.update({ "repeat": false })
+                    }
+                    this.randomSoundManager.start(this.playlistId, grupoofsounds, soundConfig.from, soundConfig.to, soundConfig.volume, soundConfig.playOnce);
+                }
+                break;
+            case constants.SOUNDTYPE.GROUP_LOOP:
+                if ((this.moods[moodId].active_groups.includes(soundConfig.group))) {
+                    const grupoofsounds = this.moods[moodId].getSoundByGroup(soundConfig.group).map(sound => sound.id);
+                    for (let i = 0; i < grupoofsounds.length; i++) {
+                        const sound = await this.playlist.sounds.get(grupoofsounds[i]);
+                        sound.update({ "repeat": true })
+                    }
+                    this.playFromGroup(soundConfig.group, moodId);
+                }
+                break;
+            case constants.SOUNDTYPE.LOOP:
+                const s = await this.playlist.sounds.get(soundConfig.id);
+                this.moods[moodId].enableSound(soundConfig.id);
+                this._playSound(soundConfig, s)
+                break;
+            case constants.SOUNDTYPE.RANDOM:
+                this.randomSoundManager.start(this.playlistId, soundConfig.id, soundConfig.from, soundConfig.to, soundConfig.volume, soundConfig.playOnce);
+                break;
+            case constants.SOUNDTYPE.SOUNDPAD:
+            case constants.SOUNDTYPE.GROUP_SOUNDPAD:
+                const so = await this.playlist.sounds.get(soundConfig.id);
+                this._playSound(soundConfig, so)
+                break;
         }
     }
 
     async playFromGroup(group, moodId) {
         const soundGroup = this.moods[moodId].getSoundByGroup(group);
         if (soundGroup.length > 0) {
-            if (soundGroup[0].type == constants.SOUNDTYPE.GROUP_RANDOM) {
-                this.moods[moodId].enableSoundByGroup(soundGroup[0].group);
-                this.playAfterDuration2(soundGroup, moodId, group, utils.randomWaitTime(soundGroup[0].from, soundGroup[0].to));
-            } else if(soundGroup[0].type == constants.SOUNDTYPE.GROUP_LOOP) {
+            if (soundGroup[0].type == constants.SOUNDTYPE.GROUP_LOOP) {
                 //this.moods[moodId].enableSoundByGroup(soundGroup[0].group);
                 this._playLoopGroup(soundGroup, soundGroup[0].intensity, moodId);
             }
@@ -600,104 +692,162 @@ export default class Soundscape {
     }
 
     async _playLoopGroup(soundGroup, intensity, moodId) {
-        const segment_size = 100/soundGroup.length;
+        const segment_size = 100 / soundGroup.length;
         let index = Math.floor(intensity / segment_size);
-        if (index >= soundGroup.length) index = soundGroup.length-1;
+        if (index >= soundGroup.length) index = soundGroup.length - 1;
         soundGroup.sort((a, b) => a.path.localeCompare(b.path));
-        let soundConfig_to_stop = {};
         let soundConfig_to_play = soundGroup[index];
         let sound_to_play = this.playlist.sounds.get(soundConfig_to_play.id);
-        for (let i=0; i < soundGroup.length; i++) {
+        for (let i = 0; i < soundGroup.length; i++) {
             soundGroup[i].intensity = intensity;
             soundGroup[i].status = "on";
             const s = this.playlist.sounds.get(soundGroup[i].id);
             await s.load()
             if (s.playing && i != index) {
-                soundConfig_to_stop = soundGroup[i];
+                await this.playlist.stopSound(s);
             }
-            if (Object.keys(soundConfig_to_stop).length !== 0) {
-                await this.stopSound(soundConfig_to_stop, moodId);
-            }
-            await this.moods[moodId].enableSound(soundConfig_to_play.id);
-            await this._playSound(soundConfig_to_play, sound_to_play);
+            //await this.moods[moodId].enableSound(soundConfig_to_play.id);
+
         }
+        await this._playSound(soundGroup[index], sound_to_play);
     }
 
     async changeSoundIntensity(moodId, group, value) {
         if (this.moods[moodId]) {
-            const soundGroup = this.moods[moodId].sounds.filter(el => el.group == group);
-            this._playLoopGroup(soundGroup, value, moodId);
-        }
-    }
-
-    async randomSound(sounds,moodId, group, s, idempotency) {
-        const config = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
-        if (config.length == 2) {
-            if (config[0] == this.id && config[1] == moodId) {
-                const index = sounds.findIndex(obj => obj.id == s.id);
-                if (sounds[index].status == "on") {
-                    await this._playSound(sounds[index], s)
-                    s.load();
-                    if (!sounds[index].playOnce) {
-                        const onEndListener = () => {
-                            if (this.random_idempotency.includes(idempotency)) {
-                                this.random_idempotency.pop(idempotency);
-                                this.playAfterDuration2(sounds,moodId, group, utils.randomWaitTime(sounds[index].from, sounds[index].to)) 
-                            }
-                        }
-                        s.sound.removeEventListener('end', onEndListener);
-                        s.sound.addEventListener('end', onEndListener);
-                    }
-                }
+            const soundGroup = this.moods[moodId].getSoundByGroup(group);
+            for (let i = 0; i < soundGroup.length; i++) {
+                soundGroup[i].intensity = value;
+                //soundGroup[i].status = "on";
+            }
+            if (this.moods[moodId].status == "playing" && this.moods[moodId].active_groups.includes(group)) {
+                await this._playLoopGroup(soundGroup, value, moodId);
             }
         }
+
+
+
     }
 
-    async playAfterDuration2(sounds,moodId, group, delay) {
-        
-        const idempotency = foundry.utils.randomID(16);
-        this.random_idempotency.push(idempotency);
-        const config = await game.settings.get('soundscape-adventure', 'current-playing').split(",");
-        if (config.length == 2) {
-            if (config[0] == this.id && config[1] == moodId) {
-                const randomIndex = Math.floor(Math.random() * sounds.length);
-                if (sounds[randomIndex].status == "on") {
-                    const s = await this.playlist.sounds.get(sounds[randomIndex].id);
-                    const timeout = new foundry.audio.AudioTimeout(delay, {
-                        callback: () => this.randomSound(sounds,moodId, group, s, idempotency)
-                    });
-                }
+    async updateSoundName(soundId, newName) {
+        const sound = await this.playlist.sounds.get(soundId);
+        if (sound) {
+            sound.update({ name: newName });
+            for (let key in this.moods) {
+                this.moods[key].updateSoundName(soundId, newName);
             }
         }
-    }
-
-    updateSoundName(soundId, newName) {
-        const sound = this.soundsConfig.find(obj => obj.id == soundId);
-        sound.name = newName;
-        const s = this.playlist.sounds.get(soundId);
-        s.update({ name: newName });
-        for (let key in this.moods) {
-            this.moods[key].updateSoundName(soundId, newName);
-        }
+        await this.saveMoodsConfig();
     }
 
     async saveExtas(moodId, soundId, new_interval, new_fade, playOnce) {
-       const soundConfig = await this.moods[moodId].getSound(soundId);
-       
-       Object.assign(soundConfig, new_interval);
-       Object.assign(soundConfig, new_fade);
-       soundConfig.playOnce = playOnce;
-       // if sound is random or random group, i need to schedule a play again
-       // need to update the config for all sounds within a group
-       if (soundConfig.group != "") {
-        const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
-        for (let i=0; i < sounds.length; i++) {
-            Object.assign(sounds[i], new_interval);
-            Object.assign(sounds[i], new_fade);
-            sounds[i].playOnce = playOnce;
+        const soundConfig = await this.moods[moodId].getSound(soundId);
+
+        Object.assign(soundConfig, new_interval);
+        Object.assign(soundConfig, new_fade);
+        soundConfig.playOnce = playOnce;
+        // if sound is random or random group, i need to schedule a play again
+        // need to update the config for all sounds within a group
+        if (soundConfig.group != "") {
+            const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
+            for (let i = 0; i < sounds.length; i++) {
+                Object.assign(sounds[i], new_interval);
+                Object.assign(sounds[i], new_fade);
+                sounds[i].playOnce = playOnce;
+            }
         }
-       }
-       await this.saveMoodsConfig();
+        await this.saveMoodsConfig();
+    }
+    //moveSound(data.soundId, data.moodId, event.target.dataset.dropZone, event.target.dataset?.dropZoneCategory)
+    async moveSound(soundId, moodId, target, category = 0) {
+        const sounds = [];
+        const sound = this.moods[moodId].getSound(soundId);
+        let isGroup = false;
+        if (sound?.group != "") {
+            sounds.push(...this.moods[moodId].getSoundByGroup(sound.group));
+            isGroup = true;
+        } else {
+            sounds.push(sound);
+        }
+        if (target.toLowerCase() == constants.SOUNDTYPE.RANDOM) {
+            for (let i = 0; i < sounds.length; i++) {
+                const s = this.playlist.sounds.get(sounds[i].id);
+                if (s) {
+                    s.update({ repeat: false });
+                }
+                sounds[i].repeat = false;
+                sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_RANDOM : constants.SOUNDTYPE.RANDOM;
+                sounds[i].category = category ? category : "";
+            }
+        } else if (target.toLowerCase() == constants.SOUNDTYPE.LOOP) {
+            for (let i = 0; i < sounds.length; i++) {
+                const s = this.playlist.sounds.get(sounds[i].id);
+                if (s) {
+                    s.update({ repeat: true });
+                }
+                sounds[i].repeat = true;
+                sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_LOOP : constants.SOUNDTYPE.LOOP;
+                sounds[i].category = category ? category : "";
+            }
+        } else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPAD) {
+            for (let i = 0; i < sounds.length; i++) {
+                const s = this.playlist.sounds.get(sounds[i].id);
+                if (s) {
+                    s.update({ repeat: false });
+                }
+                sounds[i].repeat = false;
+                sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_SOUNDPAD : constants.SOUNDTYPE.SOUNDPAD;
+                sounds[i].category = category ? category : "";
+            }
+        }
+        // if (sound.status == "on" && this.moods[moodId].status == "playing") {
+        //     this.playSound(sound, moodId);
+        // }
+
+    }
+
+    async removeSoundFromGroup(moodId, soundId) {
+        const sound = this.moods[moodId].getSound(soundId);
+        if (sound) {
+            sound.group = "";
+            if (sound.type == constants.SOUNDTYPE.GROUP_RANDOM) {
+                sound.type = constants.SOUNDTYPE.RANDOM;
+            } else if (sound.type == constants.SOUNDTYPE.GROUP_LOOP) {
+                sound.type = constants.SOUNDTYPE.LOOP;
+            }
+            await this.saveMoodsConfig();
+        }
+    }
+
+    async addSoundToGroup(moodId, soundId, group) {
+        const sound = this.moods[moodId].getSound(soundId);
+        const groupSounds = this.moods[moodId].getSoundByGroup(group);
+
+        if (!this.moods[moodId].groups.includes(group)) {
+            this.moods[moodId].groups.push(group);
+        }
+        if (sound) {
+            if (groupSounds.length > 0) {
+                sound.group = group;
+                sound.type = groupSounds[0].type;
+                sound.status = groupSounds[0].status;
+                sound.repeat = groupSounds[0].repeat;
+                sound.volume = groupSounds[0].volume;
+                sound.intensity = groupSounds[0].intensity;
+                sound.from = groupSounds[0].from;
+                sound.to = groupSounds[0].to;
+                sound.fadeIn = groupSounds[0].fadeIn;
+                sound.fadeOut = groupSounds[0].fadeOut;
+                sound.playOnce = groupSounds[0].playOnce;
+                sound.category = groupSounds[0].category;
+
+            } else {
+                sound.group = group;
+                sound.type = sound.type == constants.SOUNDTYPE.LOOP ? constants.SOUNDTYPE.GROUP_LOOP : constants.SOUNDTYPE.GROUP_RANDOM;
+                ui.notifications.warn(`The group ${group} does not exist in the mood ${moodId}. Please create the group first.`);
+            }
+            this.moods[moodId].has_changes = true;
+            //await this.saveMoodsConfig();
+        }
     }
 
     /**
@@ -710,16 +860,16 @@ export default class Soundscape {
         }
     }
     async playCustomTriggerEvent(event, moodId) {
-       
+
         const triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
-        const moodTriggers = triggerSettings[moodId]; 
+        const moodTriggers = triggerSettings[moodId];
         let groups = [];
 
         if (moodTriggers) {
             for (let soundId in moodTriggers) {
                 if (soundId == "mood") {
                     const triggers = moodTriggers[soundId];
-                    for (let i=0; i < triggers.length; i++) {
+                    for (let i = 0; i < triggers.length; i++) {
                         if (triggers[i].on == event.region.id && triggers[i].event == event.name) {
                             if (triggers[i].action == "play") {
                                 this.playMood(moodId, true);
@@ -728,13 +878,13 @@ export default class Soundscape {
                             }
                         }
                     }
-                    
+
                 } else {
                     if (this.moods[moodId].status != "playing") continue;
                     const soundConfig = await this.moods[moodId].getSound(soundId);
                     //const triggerConfig = moodTriggers[soundId];
                     const triggers = moodTriggers[soundId];
-                    for (let i=0; i < triggers.length; i++) {
+                    for (let i = 0; i < triggers.length; i++) {
                         if (triggers[i].on == event.region.id && triggers[i].event == event.name) {
                             if (triggers[i].action == "play") {
                                 this.playSound(soundConfig, moodId);
@@ -759,7 +909,7 @@ export default class Soundscape {
             triggerSettings[moodId][soundId] = triggers
             if (soundConfig.group != "") {
                 const sounds = this.moods[moodId].getSoundByGroup(soundConfig.group);
-                for (let i=0; i < sounds.length; i++) {
+                for (let i = 0; i < sounds.length; i++) {
                     triggerSettings[moodId][sounds[i].id] = triggers;
                 }
             }
@@ -769,7 +919,7 @@ export default class Soundscape {
 
     async removeAllTriggers(moodId) {
         let triggerSettings = game.settings.get(constants.STORAGETRIGGERSETTINGS, "triggerSettings");
-        
+
         if (triggerSettings[moodId]) {
             const tr = triggerSettings[moodId];
             for (let key in triggerSettings[moodId]) {
@@ -777,5 +927,285 @@ export default class Soundscape {
             }
             game.settings.set(constants.STORAGETRIGGERSETTINGS, "triggerSettings", triggerSettings);
         }
+    }
+
+    async cloneMood(moodId, newName) {
+        utils.log(utils.getCallerInfo(), `Cloning mood ${moodId} to ${newName}`);
+        const mood = this.moods[moodId];
+        if (mood) {
+            const newMood = new MoodConfig(mood.toJSON(), this.playlist, "stop");
+            //await newMood.consistence(this.playlist);
+            newMood.name = newName;
+            newMood.id = foundry.utils.randomID(16);
+            this.moods[newMood.id] = newMood;
+            this.saveMoodsConfig();
+            Hooks.callAll("SoundscapeAdventure-UpdateSidebar", "", newMood);
+            return newMood;
+        } else {
+            utils.log(utils.getCallerInfo(), `Mood ${moodId} not found`, constants.LOGLEVEL.ERROR);
+        }
+    }
+
+    render(current_playing) {
+        const directoryItem = document.createElement('li');
+        directoryItem.className = 'directory-item document playlist flexrow';
+        directoryItem.dataset.entryId = this.id;
+        directoryItem.dataset.documentId = this.id;
+        directoryItem.style.display = 'flex';
+        // Create the header element
+        const header = document.createElement('header');
+        header.className = 'playlist-header flexrow';
+        header.style.width = '100%';
+
+        // Create the title h4 element
+        const title = document.createElement('h4');
+        title.className = 'entry-name playlist-name';
+        title.draggable = true;
+        title.style.color = 'var(--color-light-3)';
+        title.style.flex = '3';
+
+        // // Create the collapse icon
+        const playlistSounds = document.createElement('ol');
+        const collapseIcon = document.createElement('i');
+        collapseIcon.className = 'collapse fa fa-angle-down';
+        collapseIcon.addEventListener('click', (ev) => {
+            playlistSounds.classList.toggle("hidden");
+            if (collapseIcon.className.includes("down")) {
+                collapseIcon.className = 'collapse fa fa-angle-up';
+            } else {
+                collapseIcon.className = 'collapse fa fa-angle-down';
+            }
+        });
+
+        // // Add the collapse icon and text to the title
+        title.appendChild(collapseIcon);
+        title.appendChild(document.createTextNode(` ${this.name}`));
+
+        // Create the controls div
+        const controls = document.createElement('div');
+        controls.className = 'playlist-controls flexrow';
+        controls.style.textAlign = 'center';
+        controls.style.alignItems = 'center';
+        controls.style.justifyContent = 'center';
+        controls.style.gap = '5px';
+
+        // Create the speaker control
+        const speakerControl = document.createElement('a');
+        speakerControl.className = 'soundboard-control fa-solid fa-speaker';
+        speakerControl.style.fontSize = 'medium';
+        speakerControl.dataset.action = 'soundscape-open';
+        speakerControl.dataset.tooltip = 'Open Soundscape';
+        speakerControl.dataset.soundboardId = this.id;
+
+        // Create the reload control
+        const reloadControl = document.createElement('a');
+        reloadControl.className = 'soundboard-control fa-solid fa-rotate-right';
+        reloadControl.style.fontSize = 'medium';
+        reloadControl.dataset.action = 'soundscape-reload';
+        reloadControl.dataset.tooltip = 'Reload Soundscape';
+        reloadControl.dataset.soundboardId = this.id;
+
+        // Create the delete control
+        const deleteControl = document.createElement('a');
+        deleteControl.className = 'soundboard-control fa-solid fa-trash';
+        deleteControl.style.fontSize = 'medium';
+        deleteControl.dataset.action = 'soundscape-remove';
+        deleteControl.dataset.tooltip = 'Delete Soundscape';
+        deleteControl.dataset.soundboardId = this.id;
+
+        // Add the controls to the controls div
+        controls.appendChild(speakerControl);
+        controls.appendChild(reloadControl);
+        controls.appendChild(deleteControl);
+
+        // Add the title and controls to the header
+        header.appendChild(title);
+        header.appendChild(controls);
+
+        // Create the playlist sounds list
+        playlistSounds.className = 'playlist-sounds';
+        playlistSounds.style.textAlign = 'left';
+        playlistSounds.style.width = '100%';
+
+        for (const key in this.moods) {
+            playlistSounds.appendChild(this.moods[key].render(this.id, current_playing));
+        }
+        directoryItem.appendChild(header);
+        directoryItem.appendChild(playlistSounds);
+        return directoryItem;
+
+
+        const parser = new DOMParser();
+
+        const doc = parser.parseFromString(`
+            
+            <!-- Directories List -->
+                <li class="directory-item document playlist flexrow" data-entry-id="g1xgdLmEbkfgHbms" data-document-id="g1xgdLmEbkfgHbms" style="display: flex;">
+                    <header class="playlist-header flexrow" style="width: 100%;">
+                        <h4 class="entry-name playlist-name" draggable="true" style="color: var(--color-light-3); flex: 4;">
+                            <i class="collapse fa fa-angle-down"></i> Soundscape: Farm 
+                        </h4>
+                        <div class="playlist-controls flexrow" style="text-align: center; align-items: center; justify-content: center; gap: 5px;   ">
+                            <a class="soundboard-control fa-solid fa-speaker" style=" font-size: large;" data-action="sound-create" data-tooltip="Open Soundscape" data-soundboard-id="Z5Ilcju6xHE3McR3"></a>
+                            <a class="soundboard-control fa-solid fa-rotate-right"  style=" font-size: large;" data-action="sound-reload" data-tooltip="Reload Soundscape" data-soundboard-id="Z5Ilcju6xHE3McR3"></a>
+                        </div>
+                    </header>
+                    <ol class="playlist-sounds" style="text-align: left; 
+    width: 100%;">
+                        <li id="Peaceful Day" class="playlist-mood flexrow" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="bSGNaKBHA0Z6acWy" style="display: flex;">
+                            <strong>Peaceful Day</strong>
+                            <div class="sound-controls flexrow">
+                                <a class="sound-control fa-solid fa-trash" data-action="mood-delete" data-tooltip="Delete Mood" data-soundscape-id="undefined" data-mood-id="bSGNaKBHA0Z6acWy"></a>
+                                <a class="soundboard-control fas fa-play" data-action="sound-play" data-tooltip="Play Mood" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="bSGNaKBHA0Z6acWy"></a>
+                            </div>
+                        </li>
+                        <li id="Bustling Haverst" class="mood flexrow" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="piZeSkBGVVzKuQ1b" style="display: flex;">
+                            <strong>Bustling Haverst</strong>
+                            <div class="sound-controls flexrow">
+                                <a class="sound-control fa-solid fa-trash" data-action="mood-delete" data-tooltip="Delete Mood" data-soundscape-id="undefined" data-mood-id="piZeSkBGVVzKuQ1b"></a>
+                                <a class="soundboard-control fas fa-play" data-action="sound-play" data-tooltip="Play Mood" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="piZeSkBGVVzKuQ1b"></a>
+                            </div>
+                        </li>
+                    </ol>
+                </li>`, 'text/html');
+        const element = doc.body;
+        return element;
+    }
+
+    async dialogCloneMood() {
+        const moods = Object.values(this.moods);
+        const options = moods.map(mood => `<option value="${mood.id}">${mood.name}</option>`).join('')
+        let newMood = [];
+        try {
+            newMood = await foundry.applications.api.DialogV2.prompt({
+                window: { title: "Select a name for the new mood" },
+                content: `<select id="originalmood" name="originalmood" class="form-control">
+                ${options}
+            </select>
+              <input id="moodname" name="moodname" value="" placeholder="Mood name">`,
+                ok: {
+                    label: "Clone Mood",
+                    callback: (event, button, dialog) => [button.form.elements.moodname.value, button.form.elements.originalmood.value]
+                }
+            });
+        } catch {
+            return;
+        }
+        if (newMood.length < 2) {
+            ui.notifications.warn("Error cloning a mood.");
+            return;
+        } else {
+            
+            if (newMood[0].trim() == "") {
+                ui.notifications.warn("You must provide a name for the new mood.");
+            } else {
+                await this.cloneMood(newMood[1], newMood[0]);
+            }
+        }
+
+    }
+
+    async dialogNewMood() {
+        let newMoodName = "";
+        try {
+            newMoodName = await foundry.applications.api.DialogV2.prompt({
+                window: { title: "Select a name for the new mood" },
+                content: `<input id="moodname" name="moodname" value="" placeholder="Mood name" autofocus>`,
+                ok: {
+                    label: "New Mood",
+                    callback: (event, button, dialog) => button.form.elements.moodname.value
+                }
+            });
+        } catch {
+            return;
+        }
+        if (newMoodName.trim() === "") {
+            ui.notifications.warn("You must provide a name for the new mood.");
+            return;
+        } else {
+            await this.newMood(newMoodName);
+        }
+    }
+
+    async dialogDeleteMood(moodId) {
+        const name = this.moods[moodId].name;
+        const response = await foundry.applications.api.DialogV2.confirm({
+            content: `Are you sure you want to delete the mood ${name}?`,
+            rejectClose: false,
+            modal: true
+        });
+
+        if (response) {
+            this.deleteMood(moodId);
+        }
+    }
+
+    async createCategory(moodId, type, categoryName) {
+
+        const id = foundry.utils.randomID(16);
+        this.moods[moodId].categories.push({ id: id, name: categoryName, type: type, collapsed: false });
+        return id;
+    }
+
+    async deleteCategory(moodId, categoryId) {
+
+    }
+
+    async renameCategory(moodId, categoryId, newCategoryName) {
+        const index = this.moods[moodId].categories.findIndex(el => el.id == categoryId);
+        if (index) {
+            this.moods[moodId].categories[index].name = newCategoryName;
+        }
+        this.moods[moodId].has_changes = true;
+    }
+
+    async playStopCategory(moodId, categoryId, action) {
+        if (this.moods[moodId].isPlaying()) {
+            const category = this.moods[moodId].categories.find(el => el.id == categoryId);
+            const all_categories_same_name = this.moods[moodId].categories.filter(el => el.name == category.name);
+            all_categories_same_name.forEach(cat => {
+                const sounds = this.moods[moodId].getSoundByCategory(cat.id, true);
+                if (action == "stop") {
+                    sounds.forEach((sound) => {
+                        this.stopSound(sound, moodId, false);
+                    });
+                } else {
+                    sounds.forEach((sound) => {
+                        this.playSound(sound, moodId);
+                    });
+
+                }
+
+            })
+
+        } else {
+            ui.notifications.warn("Mood is currently stop")
+        }
+
+    }
+
+    async enableSoundsinCategory(moodId, categoryId) {
+
+        const sounds = this.moods[moodId].getSoundByCategory(categoryId, false);
+        sounds.forEach(async (sound) => {
+            
+            await this.enableSound(moodId, sound.id);
+        });
+    }
+
+    async deleteCategory(moodId, categoryId) {
+        const sounds = this.moods[moodId].getSoundByCategory(categoryId, false);
+        await sounds.forEach((sound) => {
+            sound.category = "";
+        });
+        const index = this.moods[moodId].categories.findIndex(el => el.id == categoryId);
+        
+        if (index > 0) {
+            this.moods[moodId].categories.splice(index, 1);
+            
+        }
+
+        this.moods[moodId].has_changes = true;
+
     }
 }
