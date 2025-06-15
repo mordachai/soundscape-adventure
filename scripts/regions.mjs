@@ -18,7 +18,7 @@ export function init() {
   });
 
   // register the Sheet
-  DocumentSheetConfig.registerSheet(
+  foundry.applications.apps.DocumentSheetConfig.registerSheet(
     RegionBehavior,
     "soundscape-adventure",
     foundry.applications.sheets.RegionBehaviorConfig,
@@ -66,4 +66,11 @@ class StatusEventsRegionBehaviorType extends StatusMixin(BaseStatusEventsRegionB
       action: this._createActionField(),
     };
   }
+
+  validate(options = {}) {
+    
+    super.validate(options);
+  }
 }
+
+

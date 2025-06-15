@@ -20,41 +20,6 @@ const TOKEN_EVENTS = [
  ****************/
 
 /**
- * The base class for the `statusEffect` Region Behavior. To use it as a Region Behavior, extend the class and add
- * the `static defineSchema` and `_toggleStatus` functions.
- */
-/*export class BaseStatusRegionBehaviorType extends RegionBehaviorType {
-  static LOCALIZATION_PREFIXES = ["RAE.TYPES.moodPlay"];
-
-  static async #onTokenEnter(event) {
-    // quick data verification
-    const actor = event.data?.token?.actor;
-    if (!actor || !this.statusId) return;
-
-    // only run on triggering user
-    if (!event.user.isSelf) return;
-
-    this._toggleStatus(actor, true);
-  }
-
-  static async #onTokenExit(event) {
-    // quick data verification
-    const actor = event.data?.token?.actor;
-    if (!actor || !this.statusId) return;
-
-    // only run on triggering user
-    if (!event.user.isSelf) return;
-
-    this._toggleStatus(actor, false);
-  }
-
-  static events = {
-    [CONST.REGION_EVENTS.TOKEN_ENTER]: this.#onTokenEnter,
-    [CONST.REGION_EVENTS.TOKEN_EXIT]: this.#onTokenExit,
-  };
-}*/
-
-/**
  * The base class for the `statusEffectEvents` Region Behavior. To use it as a Region Behavior, extend the class and add
  * the `static defineSchema` and `_toggleStatus` functions.
  */
@@ -84,13 +49,5 @@ export class BaseStatusEventsRegionBehaviorType extends RegionBehaviorType {
     if (!game.users.activeGM?.isSelf) return;
 
     this._toggleStatus(event);
-    /*const actor = event.data?.token?.actor;
-    if (!actor || !this.statusId) return;
-
-    // only run once by active GM
-    if (!game.users.activeGM?.isSelf) return;
-
-    const active = this.action === "apply" ? true : this.action === "remove" ? false : undefined;
-    this._toggleStatus(actor, active);*/
   }
 }

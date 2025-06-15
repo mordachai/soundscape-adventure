@@ -33,7 +33,7 @@ function log(info, message, level = constants.LOGLEVEL.INFO, error = "") {
                 console.error(`(${init_message}) Filename: (${info.filename}):${info.line}`, message, error);
                 break;
             case constants.LOGLEVEL.WARN:
-                console.warn(`(${init_message}) Filename: ${info.filename}:${info.line}`, message, error);
+                
                 break;
             case constants.LOGLEVEL.INFO:
             default:

@@ -4,8 +4,8 @@
   "description": "The Soundscape Adventure module for FoundryVTT enhances your tabletop RPG experience by providing dynamic and immersive soundscapes.",
   "version": "placeholder",
   "compatibility": {
-    "minimum": "12",
-    "verified": "12"
+    "minimum": "13",
+    "verified": "13"
   },
   "authors": [
     {
@@ -15,6 +15,21 @@
     }
   ],
   "bugs": "https://github.com/piecesofcodecom/soundscape-adventure/issues",
+  "packs": [
+    {
+      "name": "migrate-soundscape-v1-to-v2",
+      "label": "Migrate Old Soundscapes",
+      "path": "packs/migration",
+      "module": "soundscape-adventure",
+      "type": "Macro"
+    }
+  ],
+  "packFolders": [{
+    "name": "Soundscape Adventure",
+    "sorting": "a",
+    "color": "#485440",
+    "packs": ["migrate-soundscape-v1-to-v2"]
+  }],
   "esmodules": [
     "./scripts/settings.mjs",
     "./scripts/soundscape-init.mjs"
@@ -24,7 +39,8 @@
       "lang": "en",
       "name": "English",
       "path": "lang/en.json"
-  }],
+    }
+  ],
   "documentTypes": {
     "RegionBehavior": {
       "moodPlayEvents": {}
@@ -34,13 +50,16 @@
   "styles": [
     "./css/soundscape.css"
   ],
+  "templates": [
+    "./templates/soundscape-adventure.html"
+  ],
   "media": [
-      {
-        "type": "setup",
-        "url": "./modules/soundscape-adventure/logo.webp",
-        "thumbnail": "./modules/soundscape-adventure/logo.webp"
-      }
-    ],
+    {
+      "type": "setup",
+      "url": "./modules/soundscape-adventure/logo.webp",
+      "thumbnail": "./modules/soundscape-adventure/logo.webp"
+    }
+  ],
   "url": "https://github.com/piecesofcodecom/soundscape-adventure",
   "download": "placeholder",
   "manifest": "placeholder",
