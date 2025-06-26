@@ -50,9 +50,6 @@
   "styles": [
     "./css/soundscape.css"
   ],
-  "templates": [
-    "./templates/soundscape-adventure.html"
-  ],
   "media": [
     {
       "type": "setup",
