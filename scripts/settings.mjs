@@ -92,6 +92,5 @@ Hooks.once('init', () => {
   }
 
 Hooks.once('ready', () => {
-  //handleFolderSelection();
   newsDialog();
 });
