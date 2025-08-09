@@ -417,6 +417,7 @@ export default class Soundscape {
                 await this.playSound(sounds[i], moodId);
             }
         }
+        Hooks.call("SoundscapeAdventure-Soundpad-Init");
     }
 
     async deleteMood(moodId) {

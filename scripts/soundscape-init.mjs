@@ -2,7 +2,7 @@ import constants from './utils/constants.mjs';
 import { init as coreInit } from "./regions.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import SoundscapeTab from "./soundscape-tab.mjs";
-
+import SoundpadUI from "./soundpad-ui.mjs";
 const cModuleName = "soundscape-adventure";
 /**
  * Triggers HOOKS
@@ -441,7 +441,13 @@ Hooks.once('ready', async () => {
     }
     await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
     Hooks.call("SoundscapeAdventure-UpdateSidebar");
+    Hooks.call("SoundscapeAdventure-Soundpad-Init");
 
+});
+
+Hooks.on("SoundscapeAdventure-Soundpad-Init", async () => {
+     const soundpad = new SoundpadUI();
+     await soundpad.initialize();
 });
 
 Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {
