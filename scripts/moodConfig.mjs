@@ -21,6 +21,7 @@ class SoundConfig {
             this.fadeOut = Object.hasOwn(obj, 'fadeOut') ? obj.fadeOut : 0,
             this.playOnce = Object.hasOwn(obj, 'playOnce') ? obj.playOnce : false
         this.category = Object.hasOwn(obj, 'category') ? obj.category : ""
+        this.soundIcon = Object.hasOwn(obj, 'soundIcon') ? obj.soundIcon : "";
     }
 }
 
@@ -283,6 +284,11 @@ export default class MoodConfig {
     updateSoundName(soundId, newName) {
         const sound = this.sounds.find(obj => obj.id == soundId);
         sound.name = newName;
+    }
+
+    updateSoundIcon(soundId, newIcon) {
+        const sound = this.sounds.find(obj => obj.id == soundId);
+        sound.soundIcon = newIcon;
     }
 
     isPlaying() {

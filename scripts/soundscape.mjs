@@ -87,10 +87,13 @@ export default class Soundscape {
                 this.playMood(key, false);
             }
         }
-        const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
-        if (!soundscapes.includes(this.path)) {
-            await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes + ";" + this.path);
-        }
+        // const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+        // utils.log(utils.getCallerInfo(), `Current soundscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
+        // if (!soundscapes.includes(this.path)) {
+        //     await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes + ";" + this.path);
+        //     utils.log(utils.getCallerInfo(), `Saving soundscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
+        //     utils.log(utils.getCallerInfo(), `Saving soundscapes ${this.path}`, constants.LOGLEVEL.INFO);
+        // }
     }
 
     async reloadSoundscape() {
@@ -417,7 +420,7 @@ export default class Soundscape {
                 await this.playSound(sounds[i], moodId);
             }
         }
-        Hooks.call("SoundscapeAdventure-Soundpad-Init");
+        //Hooks.call("SoundscapeAdventure-Soundpad-Render");
     }
 
     async deleteMood(moodId) {
@@ -438,6 +441,11 @@ export default class Soundscape {
         for (let i = 0; i < sounds.length; i++) {
             await this.stopSound(sounds[i], moodId, true);
         }
+        const soundpadSounds = await this.moods[moodId].sounds.filter(obj => obj.type == constants.SOUNDTYPE.SOUNDPAD);
+        for (let i = 0; i < soundpadSounds.length; i++) {
+             await this.stopSound(soundpadSounds[i], moodId, true);
+        }
+
         this.randomSoundManager.stopAll();
 
 
@@ -677,6 +685,7 @@ export default class Soundscape {
             case constants.SOUNDTYPE.SOUNDPAD:
             case constants.SOUNDTYPE.GROUP_SOUNDPAD:
                 const so = await this.playlist.sounds.get(soundConfig.id);
+                so.update({ "repeat": false })
                 this._playSound(soundConfig, so)
                 break;
         }
@@ -727,6 +736,17 @@ export default class Soundscape {
 
 
 
+    }
+
+    async updateSoundIcon(soundId, newIcon) {
+        const sound = await this.playlist.sounds.get(soundId);
+        if (sound) {
+            //sound.update({ name: newName });
+            for (let key in this.moods) {
+                this.moods[key].updateSoundIcon(soundId, newIcon);
+            }
+        }
+        await this.saveMoodsConfig();
     }
 
     async updateSoundName(soundId, newName) {

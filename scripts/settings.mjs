@@ -66,8 +66,16 @@ Hooks.once('init', () => {
       config: false,
       default: {},
       type: Object
-    })
+    });
+
+    game.settings.register('soundscape-adventure', "configCategory", {
+      name: "Soundpad UI Category",
+      hint: "The category of soundpad sounds to use in the UI.",
+      scope: "world",
+      config: true,
+      type: String,
   });
+});
 
   
   async function newsDialog() {
@@ -77,7 +85,8 @@ Hooks.once('init', () => {
       const html_content = await renderTemplate(templatePath, {});
       
       let dialog = new foundry.applications.api.DialogV2({
-        window: { title: "Soundscape Adventure NEWS" },
+        window: { title: "Soundscape Adventure NEWS", classes: ["my-package"] },
+        size: { width: 600, height: 100 },
         content: html_content,
         buttons: [{
             action: "choice",
@@ -88,6 +97,8 @@ Hooks.once('init', () => {
         }]
       });
       await dialog.render(true);
+      console.warn(dialog)
+      dialog.classList.add("my-custom-dialog");
     }
   }
 

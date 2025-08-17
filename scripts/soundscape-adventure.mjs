@@ -37,6 +37,7 @@ class SoundscapeAdventure {
             soundscapes = path_To_file
         }
         game.settings.set('soundscape-adventure','soundscapes', soundscapes);
+        utils.log(utils.getCallerInfo(), `Saving soudscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
         return true
     }
 
@@ -103,6 +104,7 @@ class SoundscapeAdventure {
         }
         
         const current_soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+        utils.log(utils.getCallerInfo(), `Current soundscapes ${current_soundscapes}`, constants.LOGLEVEL.INFO);
         const soundscapes = current_soundscapes.split(";");
         for (let i = 0; i < soundscapes.length; i++) {
             if (this.soundscapes[soundspaceId].class.path.includes(soundscapes[i])) {

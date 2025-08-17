@@ -929,8 +929,10 @@ input:checked+.soundscape-sound-slider-switch:before {
 }
 
 .sound-group-type {
-   gap: 1em; border-top: 1px solid #ccc; display: grid
-; padding-bottom: 1em
+  gap: 1em;
+  border-top: 1px solid #ccc;
+  display: grid;
+  padding-bottom: 1em
 }
 
 .sound-group-type.Loop {
@@ -947,13 +949,14 @@ input:checked+.soundscape-sound-slider-switch:before {
 
 /* WebKit (Chrome, Safari, Edge) */
 .soundscape-sound-slider::-webkit-slider-thumb {
-  background-color:#ccc;
+  background-color: #ccc;
   border: 2px solid black;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   cursor: pointer;
-  margin-top: -6px; /* Adjust vertical alignment if needed */
+  margin-top: -6px;
+  /* Adjust vertical alignment if needed */
 }
 
 /* Firefox */
@@ -964,4 +967,33 @@ input:checked+.soundscape-sound-slider-switch:before {
   height: 16px;
   border-radius: 50%;
   cursor: pointer;
+}
+
+.soundpad-btn {
+  opacity: 0.5;
+  background-position: center;
+  background-size: contain;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.soundpad-label {
+  display: none;
+  width: 100%;
+  white-space: nowrap;
+  text-align: center;
+  border: 1px solid #fff;
+  padding: 5px;
+  box-shadow: rgb(243 240 240 / 35%) 0px 0px 19px 3px;
+}
+
+.soundpad-volume-slider {
+  display: none;
+  align-items: center;
+  height: 320px;
+  width: 200px;
 }

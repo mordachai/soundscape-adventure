@@ -1,127 +1,214 @@
 import Soundscape from "./soundscape.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import constants from "./utils/constants.mjs";
-export default class SoundpadUI {
-    constructor() {
-        this.element = null;
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
+
+/**
+ * SoundpadUI as a Foundry Application using Handlebars templates.
+ */
+export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2) {
+    static PARTS = {
+        foo: { template: 'modules/soundscape-adventure/templates/soundpad-ui.hbs' }
+    }
+    static DEFAULT_OPTIONS = {
+        id: "soundpad-ui",
+        window: {
+            title: "🎛️ Soundpad UI",
+        },
+        classes: ["soundpad-ui"]
+    }
+    constructor(options = {}) {
+        super(options);
         this.count = 0;
-        this.isUpdating = false; // Flag to prevent concurrent operations
+        this.isUpdating = false;
     }
 
-    /**
-     * Initialize the counter UI
-     */
-    async initialize() {
-        // Get the saved counter value and validate it
+    // static get defaultOptions() {
+    //     return foundry.utils.mergeObject(super.defaultOptions, {
+    //         id: "soundpad-ui",
+    //         template: "modules/soundscape-adventure/templates/soundpad-ui.hbs",
+    //         classes: ["soundpad-ui"],
+    //         popOut: false,
+    //         width: 400,
+    //         height: "auto",
+    //         left: 0,
+    //         top: 500, // TODO: make configurable
+    //         zIndex: 1000,
+    //         resizable: false,
+    //     });
+    // }
 
-        // Render the counter
-        await this.render();
-
+    async _preparePartContext(partId, context) {
+        context.partId = `${this.id}-${partId}`;
+        return context;
     }
-
     /**
-     * Render the counter UI element
+     * Prepare data for the template.
      */
-    async render() {
-        // modify permissions
+    async _prepareContext(options) {
         const canModify = game.user.isGM || game.user.hasRole("ASSISTANT");
-
-        // Create the counter HTML with inline styles for z-index
-        // Only include buttons if the user has permission
-        // Create your new element
-        const currentElement = document.getElementById('soundpad-ui-1');
-        let newElement;
-        if (currentElement) {
-            // If the element already exists, remove it
-            newElement = currentElement;
-            newElement.innerHTML = ""; // Clear existing content
-        } else {
-            newElement = document.createElement('aside');
+        let config_category = game.settings.get('soundscape-adventure', "configCategory");
+        if (!config_category) {
+            ui.notifications.warn("No soundpad UI category configured. Using all sounds without category.");
+            config_category = "";
         }
-
-        newElement.id = 'soundpad-ui-1';
-        newElement.style.zIndex = '1000'; // Set a high z-index to ensure it appears above other elements
-        newElement.style.flex = '1';
-        newElement.style.width = '100%';
-        newElement.style.overflow = 'hidden';
-        newElement.style.display = 'flex';
-        newElement.style.flexDirection = 'row';
-        newElement.style.flexWrap = 'nowrap';
-        newElement.style.gap = '8px';
-        newElement.style.pointerEvents = 'none';
-        newElement.style.position = 'absolute';
-        newElement.style.marginTop = '500px'; // TODO allow edit in the configuration
         const soundscapes = SoundscapeAdventure.soundscapes;
+        let name = "";
         let sounds = [];
         for (const soundscapeId in soundscapes) {
             const soundscape = soundscapes[soundscapeId];
             if (soundscape.class.isPlaying) {
-                console.warn("Soundscape is playing");
                 const mood = soundscape.class.moods[soundscape.class.activeMoodId];
-                console.warn(`Sound Type: ${constants.SOUNDTYPE.SOUNDPAD}`)
-                //console.warn(mood.sounds);
-                sounds = await mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
-                console.warn(sounds)
-
+                const category = config_category === "" ? {id: ""} : mood.categories.find(c => c.name === config_category);
+                if (!category) {
+                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
+                } else {
+                sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD && sound.category === category.id);
+                }
+                name = mood.name;
+                this.soundscape = soundscape.class;
             }
         }
-
-        // Build a 2-column menu with up to 10 rows (20 buttons max)
-        let totalButtons = sounds.length;
-        const buttonsPerColumn = 10; // TODO add to the configuration
-        let menuHtml = ""; //`<menu class="flexrow" style="gap: 10px;">`;
-        const imgs = [
-            'https://images.vexels.com/media/users/3/273074/isolated/preview/496885a8007d7ce0df514a51798953a1-role-play-games-sword-icon.png',
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-jABBhbq67jWo0RrIc6p2yPwbhD_3nZ24Fg&s',
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaeEA7l_CfmU0KevbnrvL8rY0bOiEvIH2kKA&s',
-            'https://icons.iconarchive.com/icons/raindropmemory/down-to-earth/512/G12-RPG-icon.png'
-        ]
-        // Calculate the number of columns needed
+        const imgs = [];
+        const buttonsPerColumn = 10;
         const columns = Math.ceil(sounds.length / buttonsPerColumn);
-        let btnIndex = 0;
-        //console.warn(sounds)
-        console.warn(`Total buttons: ${totalButtons}, Columns: ${columns}, Buttons per column: ${buttonsPerColumn}`);
-        for (let col = 0; col < columns; col++) {
-            console.warn(btnIndex);
-            menuHtml += `<menu class="flexcol" style="gap: 5px;">`;
-            for (let row = 0; row < buttonsPerColumn; row++) {
-                if (btnIndex >= totalButtons) break;
-
-                menuHtml += `<li style="
-                background: url(${imgs[btnIndex % imgs.length]});
-                background-position: center;
-                background-repeat: no-repeat;
-                background-size: cover;"><button style="opacity: 0.3" class="control ui-control layer icon fa-solid fa-play" data-tooltip="${sounds[btnIndex].name}" aria-pressed="false" aria-label="Lighting Controls"></button></li>`;
-                btnIndex++;
-                
-            }
-            menuHtml += `</menu>`;
-        }
-        newElement.innerHTML = menuHtml;
-
-        // Find the parent div and the reference element
-        const parent = document.getElementById('ui-left');
-        const sceneControls = parent.querySelector('#ui-left-column-1');
-        //const sceneControls = parent.querySelector('#scene-navigation');
-
-        // Insert the new element after sceneControls
-        if (parent && sceneControls) {
-            sceneControls.insertAdjacentElement('beforebegin', newElement);
-        } else {
-            console.error("Parent or reference element not found.");
-            console.error("Parent:", parent);
-            console.error("Reference element:", sceneControls);
-        }
+        return {
+            canModify,
+            sounds,
+            imgs,
+            buttonsPerColumn,
+            columns,
+            name
+        };
     }
 
     /**
-     * Activate event listeners
+     * Activate event listeners for the UI.
      */
-    activateListeners() {
-        // Add multiple event types to ensure we catch the interaction
-    }
+    // get title() {
+    // return `<i class="fa-solid fa-drum"> soundpad UI</i>`;
+    // }
+    async _onRender(context, options) {
+        //console.warn("Soundpad UI rendered with context:", context);
+        await super._onRender(context, options);
 
-    updateDisplay() {
+        //context.name = `<i class="fa-solid fa-drum">asds ${context.name}</i>`;
+        const buttons = this.element.querySelectorAll('.soundpad-btn');
+        buttons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                if (!this.soundscape.activeMoodId) return;
+                const btn = event.currentTarget;
+                btn.style.opacity = 1;
+                const idx = parseInt(event.currentTarget.dataset.idx);
+                const sound = context.sounds[idx];
+                const playlist = this.soundscape.playlist;
+                const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
+                console.warn("Soundpad button clicked:", playlistSound.playing, playlistSound.name);
+                const icon = btn.querySelector('i')
+                if (sound && !playlistSound.playing) {
+                    // before playing, make sure it isn't configured as a loop sound
+                    await this.soundscape.playSound(sound, this.soundscape.activeMoodId);
+                    event.currentTarget.style.backgroundColor = "#c9593f";
 
+                    //icon.classList.toggle('fa-play', !playlistSound.playing);
+                    icon.className = "fas fa-stop";
+                    setTimeout(() => {
+                        playlistSound.sound.addEventListener(
+                            'end',
+                            (event) => {
+                                btn.style.backgroundColor = "";
+                                icon.className = "fas fa-play";
+                                btn.style.opacity = 0.5;
+                            }
+                        );
+                        playlistSound.sound.addEventListener(
+                            'stop',
+                            (event) => {
+                                btn.style.backgroundColor = "";
+                                icon.className = "fas fa-play";
+                                btn.style.opacity = 0.5;
+                            }
+                        )
+                    }, 100);
+
+                } else if (sound && playlistSound.playing) {
+                    console.warn("Stopping sound:", sound);
+                    await this.soundscape.stopSound(sound, this.soundscape.activeMoodId);
+                    btn.style.backgroundColor = "";
+                    icon.className = "fas fa-play";
+                }
+            });
+            button.addEventListener('contextmenu', async (event) => {
+                if (!this.soundscape.activeMoodId) return;
+                event.preventDefault(); // stop context menu
+
+                const idx = parseInt(event.currentTarget.dataset.idx);
+                const sound = context.sounds[idx];
+                const playlist = this.soundscape.playlist;
+                const playlistSound = playlist.sounds.find(s => s.id === sound.id);
+
+                // Remove any existing sliders first
+                //soundselected
+                const currentBar = this.element.querySelector('.soundpad-volume-slider');
+                currentBar.style.display = 'flex';
+                //currentBar.querySelector('.soundpad-volume-label').textContent = playlistSound.name;
+                // Remove any existing slider
+                let slider = currentBar.querySelector('input[type="range"]');
+                if (slider) slider.remove();
+
+                // Create and add new slider
+                slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = 0;
+                slider.max = 1;
+                slider.step = 0.01;
+                slider.style.marginTop = "100px";
+                slider.className = 'soundpad-volume-slider-input';
+                slider.style.writingMode = "bt-lr";
+                slider.style.transform = "rotate(270deg)";
+                slider.style.width = "200px";
+                slider.style.boxShadow = "rgb(243 240 240 / 35%) 0px 0px 5px 0px";
+                
+                let volume_label = currentBar.querySelector('.soundpad-volume-label');
+                if (!volume_label) {
+                    volume_label = document.createElement('span');
+                volume_label.className = 'soundpad-volume-label';
+                volume_label.style.display = 'block';
+                volume_label.style.textAlign = 'center';
+                volume_label.textContent = `Volume`;
+                currentBar.appendChild(volume_label);
+                }
+                
+
+                currentBar.appendChild(slider);
+                let volume_value = currentBar.querySelector('.soundpad-volume-value');
+                if (!volume_value) {
+                    volume_value = document.createElement('span');
+                volume_value.className = 'soundpad-volume-value';
+                volume_value.style.display = 'block';
+                volume_value.style.textAlign = 'center';
+                volume_value.style.marginTop = "100px";
+                }
+                volume_value.textContent = `${parseInt(sound.volume * 100)} %`;
+                currentBar.appendChild(volume_value);
+                
+                let label = this.element.querySelector('.soundpad-label');
+                label.style.whiteSpace= "nowrap";
+                label.style.display = 'block';
+                label.style.textAlign = 'center';
+                label.textContent = playlistSound.name;
+                //currentBar.appendChild(label);
+                const listener = async () => {
+                    if (playlistSound) {
+                        this.soundscape.changeSoundVolume(this.soundscape.activeMoodId, sound.id, parseFloat(slider.value));
+                        await playlistSound.update({ volume: parseFloat(slider.value) });
+                        volume_value.textContent = `${parseInt(slider.value * 100)} %`;   
+                    }
+                }
+                slider.value = parseFloat(sound?.volume) ?? 1;
+                slider.addEventListener('input', listener, false);
+            });
+        });
+        return context;
     }
-} 
+}
