@@ -82,17 +82,8 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
         };
     }
 
-    /**
-     * Activate event listeners for the UI.
-     */
-    // get title() {
-    // return `<i class="fa-solid fa-drum"> soundpad UI</i>`;
-    // }
     async _onRender(context, options) {
-        //console.warn("Soundpad UI rendered with context:", context);
         await super._onRender(context, options);
-
-        //context.name = `<i class="fa-solid fa-drum">asds ${context.name}</i>`;
         const buttons = this.element.querySelectorAll('.soundpad-btn');
         buttons.forEach(button => {
             button.addEventListener('click', async (event) => {
@@ -103,7 +94,6 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                 const sound = context.sounds[idx];
                 const playlist = this.soundscape.playlist;
                 const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
-                console.warn("Soundpad button clicked:", playlistSound.playing, playlistSound.name);
                 const icon = btn.querySelector('i')
                 if (sound && !playlistSound.playing) {
                     // before playing, make sure it isn't configured as a loop sound

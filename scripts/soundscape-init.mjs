@@ -483,7 +483,6 @@ Hooks.once('ready', async () => {
 Hooks.on("getSceneControlButtons", (controls) => {
     //alert("getSceneControlButtons");
     // Find or create your own control group
-    console.warn("getSceneControlButtons", controls);
     //let myTools = controls.find(c => c.name === "soundscape-adventure-controls");
     if (!controls.hasOwnProperty("soundscapeAdventure")) {
         // controls["soundscapeAdventure"] = {
