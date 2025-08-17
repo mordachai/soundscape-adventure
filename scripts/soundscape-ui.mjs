@@ -840,7 +840,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             filePickerIcon.addEventListener("click", ev => {
                 const picker = new FilePicker({
                     type: "image",                       // image, audio, video, etc.
-                    current: "/",                   // starting directory
                     callback: path => {
                         const input = soundEditDialog.element.querySelector("input[name='soundIcon']");
                         input.value = path;

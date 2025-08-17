@@ -59,14 +59,16 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
             const soundscape = soundscapes[soundscapeId];
             if (soundscape.class.isPlaying) {
                 const mood = soundscape.class.moods[soundscape.class.activeMoodId];
-                const category = config_category === "" ? {id: ""} : mood.categories.find(c => c.name === config_category);
-                if (!category) {
-                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
-                } else {
-                sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD && sound.category === category.id);
+                if(mood) {
+                    const category = config_category === "" ? {id: ""} : mood.categories.find(c => c.name === config_category);
+                    if (!category) {
+                        sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
+                    } else {
+                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD && sound.category === category.id);
+                    }
+                    name = mood.name;
+                    this.soundscape = soundscape.class;
                 }
-                name = mood.name;
-                this.soundscape = soundscape.class;
             }
         }
         const imgs = [];
