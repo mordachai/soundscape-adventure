@@ -229,7 +229,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             const content = await this.element.querySelector('.mood-active');
             this.scrollTop = content?.scrollTop ?? 0;
         }
-        
+
         await super.render(force, options);
         //
     }
@@ -402,7 +402,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         await this.soundscape.class.dialogDeleteMood(moodId);
                         break;
                     default:
-                        
+
                 }
                 this.myRender(true);
             });
@@ -465,7 +465,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             this.soundscape.class.playSound(sound, moodId)
                         }
                         break;
-                     case "stop":
+                    case "stop":
                         const sounds = this.soundscape.class.moods[moodId].getSound(soundId);
                         if (sound.type == constants.SOUNDTYPE.SOUNDPAD) {
                             this.soundscape.class.moods[moodId].stopSound(moodId, sounds)
@@ -473,7 +473,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         break;
                     default:
                         console.warn("action not found", action);
-                        
+
                 }
                 this.myRender(true);
             });
@@ -545,7 +545,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                     const category = this.soundscape.class.moods[moodId].categories.find(el => el.id == categoryId && el.type == type);
                     category.collapsed = !category.collapsed;
-                    
+
 
                     const content = this.element.querySelector('.mood-active');
                     this.scrollTop = content?.scrollTop ?? 0;
@@ -833,6 +833,22 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         const addSound = soundEditDialog.element.querySelector(".sound-add-group");
 
+        // Attach to your button
+        const filePickerIcon = soundEditDialog.element.querySelector(".file-picker")
+
+        if (filePickerIcon) {
+            filePickerIcon.addEventListener("click", ev => {
+                const picker = new FilePicker({
+                    type: "image",                       // image, audio, video, etc.
+                    callback: path => {
+                        const input = soundEditDialog.element.querySelector("input[name='soundIcon']");
+                        input.value = path;
+                    }
+                });
+                picker.render(true);
+            });
+        }
+
         if (addSound) {
             addSound.addEventListener("change", async (el) => {
                 if (el.target.value == "NewGroup") {
@@ -998,6 +1014,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         if (elements.soundName)
             await this.soundscape.class.updateSoundName(soundId, elements.soundName.value);
         await this.soundscape.class.saveTrigger(moodId, soundId, triggers);
+        await this.soundscape.class.updateSoundIcon(soundId, elements.soundIcon.value);
+        //console.warn("Sound Icon: ", elements.soundIcon.value);
         this.myRender(true);
     }
 

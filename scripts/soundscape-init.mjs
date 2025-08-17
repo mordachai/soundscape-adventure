@@ -2,7 +2,8 @@ import constants from './utils/constants.mjs';
 import { init as coreInit } from "./regions.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import SoundscapeTab from "./soundscape-tab.mjs";
-
+import SoundpadUI from "./soundpad-ui.mjs";
+import utils from './utils/utils.mjs';
 const cModuleName = "soundscape-adventure";
 /**
  * Triggers HOOKS
@@ -67,7 +68,7 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     }
 
     if (!SoundscapeAdventure.soundscapes.hasOwnProperty(current.soundscape)) {
-        ui.notifications.warn("The soundscape " + current.soundscape + " is not available. Reseting scene config.");
+        //ui.notifications.warn("The soundscape " + current.soundscape + " is not available. Reseting scene config.");
         current.action = "";
         current.mood = "";
         current.soundscape = "";
@@ -273,6 +274,7 @@ Hooks.on('updateScene', async (scene, data, modified, sceneId) => {
  * Custom Handlebars
  */
 Hooks.once('init', () => {
+    game.soundscapeAdventure = {}
     Handlebars.registerHelper('eachSoundType', function (array, options) {
         let result = '';
         let groups = [];
@@ -281,7 +283,7 @@ Hooks.once('init', () => {
             if (el.group != "") {
                 //if ((type + 3) == el.type) { // type 4 + 3 = 7
                 if (!groups.includes(el.group)) {
-                    
+
                     groups.push(el.group);
                     const clone = structuredClone(el);
                     clone.name = 'Group: ' + el.group,
@@ -311,8 +313,8 @@ Hooks.once('init', () => {
                 }
             }
         });
-        
-        
+
+
         return categories;
         //return result;
     });
@@ -393,7 +395,39 @@ Hooks.once('init', () => {
         } else {
             return options.inverse(this);
         }
-    })
+    });
+
+    Handlebars.registerHelper("inColumn", function (itemIndex, buttonsPerColumn, totalColumns, currentColumnIndex) {
+        itemIndex = Number(itemIndex);
+        buttonsPerColumn = Number(buttonsPerColumn);
+        totalColumns = Number(totalColumns);
+        currentColumnIndex = Number(currentColumnIndex);
+
+        // Each column gets a block of items
+        const start = currentColumnIndex * buttonsPerColumn;
+        const end = start + buttonsPerColumn;
+
+        return itemIndex >= start && itemIndex < end;
+    });
+
+    Handlebars.registerHelper("range", function (start, end) {
+        start = Number(start);
+        end = Number(end);
+        const arr = [];
+        for (let i = start; i <= end; i++) arr.push(i);
+        return arr;
+    });
+
+    Handlebars.registerHelper("sub", (a, b) => Number(a) - Number(b));
+    // modulus helper
+    Handlebars.registerHelper("mod", function (a, b) {
+        return Number(a) % Number(b);
+    });
+
+    // length helper
+    Handlebars.registerHelper("length", function (arr) {
+        return Array.isArray(arr);
+    });
 
 });
 
@@ -419,6 +453,7 @@ Hooks.once('ready', async () => {
         document.addEventListener("keydown", tryUnlock);
     });
     const current_soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+    utils.log(utils.getCallerInfo(), `Current soundscapes ${current_soundscapes}`, constants.LOGLEVEL.INFO);
     const soundscape_list = current_soundscapes.split(";").map(vPath => vPath.trim()).filter(vPath => vPath.length > 0);
     const validSoundscapes = [];
     for (const soundscape of soundscape_list) {
@@ -440,8 +475,58 @@ Hooks.once('ready', async () => {
         }
     }
     await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
+    utils.log(utils.getCallerInfo(), `Saving soundscapes ${validSoundscapes.join(";")}`, constants.LOGLEVEL.INFO);
     Hooks.call("SoundscapeAdventure-UpdateSidebar");
 
+});
+
+Hooks.on("getSceneControlButtons", (controls) => {
+    //alert("getSceneControlButtons");
+    // Find or create your own control group
+    //let myTools = controls.find(c => c.name === "soundscape-adventure-controls");
+    if (!controls.hasOwnProperty("soundscapeAdventure")) {
+        // controls["soundscapeAdventure"] = {
+        //     active: false,
+        //     activeTool: "soundpad",       // true = active, false = inactive
+        //     name: "soundscapeAdventure",          // Internal name
+        //     title: "Soundpad",         // Tooltip name
+        //     icon: "fas fa-star",          // FontAwesome icon
+        //     layer: "tokens",              // Layer to activate (or null)
+        //     tools: [],                    // Will hold your buttons
+        //     onChange: (_event, active) => {
+        //         ui.notifications.info("You clicked my button!");
+        //     }
+        // };
+        //controls.push(myTools);
+    }
+
+    // Add a tool (button) to the group
+    controls.sounds.tools["soundpad"] = {
+        name: "soundpad",
+        title: "Soundpad",
+        icon: "fas fa-list-music",
+        button: true,
+        //toggle: false, // one-time click
+        visible: true, // or () => true
+        onChange: async (e,x) => {
+            //ui.notifications.info("Token tool clicked!");
+            if (game.soundscapeAdventure.soundpadUI) {
+                await game.soundscapeAdventure.soundpadUI.render(true);
+                //game.soundscapeAdventure.soundpadUI = null;
+            } else {
+                game.soundscapeAdventure.soundpadUI = new SoundpadUI({ position: { width: 600, height: 600 } });
+                Hooks.call("SoundscapeAdventure-Soundpad-Render");
+            }
+        }
+    };
+});
+
+Hooks.on("SoundscapeAdventure-Soundpad-Render", async () => {
+    //scene-controls
+    if (game.soundscapeAdventure.soundpadUI) {
+        await game.soundscapeAdventure.soundpadUI.render(true);
+        //game.soundscapeAdventure.soundpadUI.close();
+    }
 });
 
 Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {

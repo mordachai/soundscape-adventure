@@ -212,8 +212,10 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 				// Step 5: Add file to the local configuration
 				const current_soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
+				utils.log(utils.getCallerInfo(), `Current soundscapes ${current_soundscapes}`, constants.LOGLEVEL.INFO);
 				const soundscapes = current_soundscapes ? `${current_soundscapes};${folderPath}/${fileName}.json` : `${folderPath}/${fileName}.json`;
 				await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes);
+				utils.log(utils.getCallerInfo(), `Saving soundscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
 				await SoundscapeAdventure.loadSoundscape(`${folderPath}/${fileName}.json`);
 
 				// Step 6: RELOAD Tab

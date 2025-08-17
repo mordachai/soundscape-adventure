@@ -23,6 +23,16 @@
                 <option value="NewGroup">Create a New Group</option>
             </select>
         </div>
+        <div>
+            <label for="soundName">Sound Icon:</label>
+            <div class="form-fields">
+                <input type="text" id="soundIcon" name="soundIcon" placeholder="Select an icon"
+                    value="{{ sound.soundIcon }}" data-dtype="String" />
+                <button type="button" class="file-picker" data-type="image" data-target="input[name='soundIcon']" tabindex="-1" title="Browse Files">
+                    <i class="fas fa-file-import fa-fw"></i>
+                </button>
+            </div>
+        </div>
     </div>
     <br />
     {{else}}
