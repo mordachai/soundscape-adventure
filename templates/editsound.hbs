@@ -37,12 +37,12 @@
     <br />
     {{else}}
     <div class="sound-element-group" style="display: flex; flex-wrap: wrap; gap: 1rem;" >
-        <label for="ice-cream-choice">Choose a sound:</label>
-<input list="ice-cream-flavors" id="ice-cream-choice" name="ice-cream-choice" />
-<datalist id="ice-cream-flavors">
+        {{!-- <label for="ice-cream-choice">Choose a sound:</label>
+<input list="ice-cream-flavors" id="ice-cream-choice" name="ice-cream-choice" /> --}}
+<!--datalist id="ice-cream-flavors"-->
         {{#each sounds}}
-        <option value="{{this.id}}">{{this.name}}</option>
-        <!--div style="width: calc(100% / 3 - 0.67rem); " class="sound-element">
+        <!--option value="{{this.id}}">{{this.name}}</option-->
+        <div style="width: calc(100% / 3 - 0.67rem); " class="sound-element">
             <label for="soundName"><b>Sound Name</b>: {{this.name}}  
             </label>
     <a data-sound-id="{{this.id}}" class="sound-remove-group" style="border: 1px solid #000000;
@@ -52,9 +52,9 @@
     position: relative;
     transition: width 0.2s ease-in-out;
     padding: 3px;" data-tooltip="Remove from the group"><i class="fa-solid fa-xmark"></i></a>
-        </div-->
+        </div>
         {{/each}}
-        </datalist>
+        <!--/datalist-->
     </div>
     <br />
     {{/if}}
