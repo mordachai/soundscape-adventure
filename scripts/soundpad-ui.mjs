@@ -91,11 +91,20 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                 const sound = context.sounds[idx];
                 const playlist = this.soundscape.playlist;
                 const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
-                const icon = btn.querySelector('i')
+                await playlistSound.load();
+                console.warn("Playlist sound", playlistSound);
+                console.warn("Sound", sound);
+                console.warn("btn", btn);
+                const icon = btn.querySelector('i');
+                if (!playlistSound) {
+                    console.warn("Sound not found in playlist");
+                    return;
+                }
                 if (sound && !playlistSound.playing) {
+                    console.warn("Playing sound", sound);
                     // before playing, make sure it isn't configured as a loop sound
                     await this.soundscape.playSound(sound, this.soundscape.activeMoodId);
-                    event.currentTarget.style.backgroundColor = "#c9593f";
+                    btn.style.backgroundColor = "#c9593f";
 
                     //icon.classList.toggle('fa-play', !playlistSound.playing);
                     icon.className = "fas fa-stop";

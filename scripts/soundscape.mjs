@@ -685,6 +685,7 @@ export default class Soundscape {
                 break;
             case constants.SOUNDTYPE.SOUNDPAD:
             case constants.SOUNDTYPE.GROUP_SOUNDPAD:
+            case constants.SOUNDTYPE.SOUNDPADUI:
                 const so = await this.playlist.sounds.get(soundConfig.id);
                 so.update({ "repeat": false })
                 this._playSound(soundConfig, so)
