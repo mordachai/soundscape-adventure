@@ -55,12 +55,12 @@
             <input type="text" class="filterInput" placeholder="Search music by name..." class="form-control" />
 
             {{#each this.sounds }}
-                {{#if (ne this.type 3)}}
-                <div class="sound-group-type {{this.name}} drop-zone" data-drop-zone="{{ this.type }}">
-                    <h2 class="drop-zone" style=" padding-left: 6px; margin-top: 0.5em;" data-drop-zone="{{ this.type }}">{{
-                        this.name }} Sounds
-                        {{#if (ne this.type 7) }}
-                        <i class="fa-regular fa-folder-medical new-category" style="
+            {{#if (ne this.type 3)}}
+            <div class="sound-group-type {{this.name}} drop-zone" data-drop-zone="{{ this.type }}">
+                <h2 class="drop-zone" style=" padding-left: 6px; margin-top: 0.5em;" data-drop-zone="{{ this.type }}">{{
+                    this.name }} Sounds
+                    {{#if (ne this.type 7) }}
+                    <i class="fa-regular fa-folder-medical new-category" style="
         font-size: x-large;
         padding: 2px;
         top: -5px;
@@ -82,7 +82,8 @@
                                 <i class="fa fa-angle-{{#if this.collapsed}}up{{else}}down{{/if}}"></i>&nbsp;Category:
                                 {{this.name}}
                             </h4>
-                            <span class="grid flexrow" style="align-items: center; text-align: center; color: black; font-size: medium; justify-content: flex-end; margin-right: 10px;">
+                            <span class="grid flexrow"
+                                style="align-items: center; text-align: center; color: black; font-size: medium; justify-content: flex-end; margin-right: 10px;">
                                 {{#unless (eq this.name "None") }}
                                 <i class="fa-solid fa-trash category-control" style="max-width: 40px"
                                     data-category-id="{{this.id}}" data-mood-id="{{../../id}}" data-action="delete"
@@ -222,67 +223,66 @@
                 {{/each}}
             </div>
             {{else}}
-           
-            
+
+
             {{/if}}
             {{/each }}
         </div>
         {{/each}}
     </div>
 
-<div class="soundscape-sliding-panel {{#if libraryIsOpen}}open{{/if}} {{#if (eq this.id ../activeMood)}} slide-active {{/if}}">
-                <div class="soundscape-sliding-ear">❯</div>
-                <div class="soundscape-sliding-panel-content drop-zone" data-drop-zone="3"
-                        data-drop-zone-category="">
-                    <h2 class="drop-zone" data-drop-zone="3"
-                        data-drop-zone-category="">Sidebar</h2>
+    <div class="soundscape-sliding-panel {{#if libraryIsOpen}}open{{/if}} slide-active"
+        style="{{#if (not activeMood)}} display: none; {{/if}}">
+        <div class="soundscape-sliding-ear">❯</div>
+        <div class="soundscape-sliding-panel-content drop-zone" data-drop-zone="3" data-drop-zone-category="">
+            <h2 class="drop-zone" data-drop-zone="3" data-drop-zone-category="">Library</h2>
 
-                    <div class="soundpad-list-container-library flexcol drop-zone" data-drop-zone="3"
-                        data-drop-zone-category="">
-                        {{#each library}}
-                        <div class="soundpad-list-item flexrow data-drag" data-sound-id="{{this.id}}" data-mood-id="{{@root/activeMood}}"
-                            data-tooltip="">
-                            
-                            <div class="flexrow">
-                                {{!-- Sound Name --}}
-                                <div class="" style="flex: 4;">
-                                    <span data-full-name="asd">{{this.name}}</span>
-                                </div>
+            <div class="soundpad-list-container-library flexcol drop-zone" data-drop-zone="3"
+                data-drop-zone-category="">
+                {{#each library}}
+                <div class="soundpad-list-item flexrow data-drag" data-sound-id="{{this.id}}"
+                    data-mood-id="{{@root/activeMood}}" data-tooltip="">
 
-                                {{!-- Volume Slider
-                                <div class="soundpad-volume-section">
-                                    <div class="soundpad-volume-container" draggable="false">
-                                        <span class="volume-label">Vol:</span>
-                                        <input type="range" min="0" max="1" step="0.05"
-                                            class="soundpad-volume-slider sound-control" value="asd" data-sound-id="asd"
-                                            data-mood-id="asd" data-action="volume" draggable="false" />
-                                        <span class="volume-value" id="volume-value-12">12</span>
-                                    </div>
-                                </div> --}}
-
-                                {{!-- Action Buttons --}}
-                                <div class="soundpad-actions" style="align-items: center;justify-content: center;">
-                                    {{!-- <button class="soundpad-btn sound-control" data-tooltip="Configuration"
-                                        data-action="edit-sound" data-mood-id="asd" data-sound-id="asd" data-group="ad">
-                                        <i class="fas fa-cog"></i>
-                                    </button> --}}
-                                    <button class="soundpad-btn sound-control" data-tooltip="Preview" data-action="preview-sound"
-                                                data-mood-id="{{ ../activeMood }}" data-sound-id="{{ this.id }}"
-                                                data-group="{{ this.group }}">
-                                    <i class="fas fa-ear sound-control-icon" style="color: white"></i>
-                                    </button>
-                                    {{!-- <button class="soundpad-btn sound-control" data-tooltip="Play sound"
-                                        data-action="preview" data-mood-id="dasd" data-sound-id="asd" data-group="dasd">
-                                        <i class="fas fa-play"></i>
-                                    </button> --}}
-                                </div>
-                            </div>
-                            
+                    <div class="flexrow">
+                        {{!-- Sound Name --}}
+                        <div class="" style="flex: 4;">
+                            <span data-full-name="asd">{{this.name}}</span>
                         </div>
-                        {{/each}}
 
+                        {{!-- Volume Slider
+                        <div class="soundpad-volume-section">
+                            <div class="soundpad-volume-container" draggable="false">
+                                <span class="volume-label">Vol:</span>
+                                <input type="range" min="0" max="1" step="0.05"
+                                    class="soundpad-volume-slider sound-control" value="asd" data-sound-id="asd"
+                                    data-mood-id="asd" data-action="volume" draggable="false" />
+                                <span class="volume-value" id="volume-value-12">12</span>
+                            </div>
+                        </div> --}}
+
+                        {{!-- Action Buttons --}}
+                        <div class="soundpad-actions" style="align-items: center;justify-content: center;">
+                            {{!-- <button class="soundpad-btn sound-control" data-tooltip="Configuration"
+                                data-action="edit-sound" data-mood-id="asd" data-sound-id="asd" data-group="ad">
+                                <i class="fas fa-cog"></i>
+                            </button> --}}
+                            <button class="soundpad-btn sound-control" data-tooltip="Preview"
+                                data-action="preview-sound" data-mood-id="{{ ../activeMood }}"
+                                data-sound-id="{{ this.id }}" data-group="{{ this.group }}">
+                                <i class="fas fa-ear sound-control-icon" style="color: white"></i>
+                            </button>
+                            {{!-- <button class="soundpad-btn sound-control" data-tooltip="Play sound"
+                                data-action="preview" data-mood-id="dasd" data-sound-id="asd" data-group="dasd">
+                                <i class="fas fa-play"></i>
+                            </button> --}}
+                        </div>
                     </div>
+
                 </div>
+                {{/each}}
+
             </div>
+        </div>
+    </div>
 
 </div>

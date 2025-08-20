@@ -45,6 +45,10 @@ export default class MoodConfig {
         this.active_groups = moodConfig.active_groups ? moodConfig.active_groups : [];
         this.sounds = [];
         this.categories = moodConfig?.categories ? moodConfig.categories : [];
+        const soundpadui = this.categories.filter(el => el.type == constants.SOUNDTYPE.SOUNDPADUI);
+        if (soundpadui.length == 0) {
+            this.categories.push({ id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] })
+        }
         //this.groups = moodConfig?.groups ? moodConfig.groups : [];
         const _sounds = moodConfig.sounds.slice();
         for (let i = 0; i < _sounds.length; i++) {

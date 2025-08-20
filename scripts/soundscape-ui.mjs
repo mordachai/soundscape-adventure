@@ -476,6 +476,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         await this.soundscape.class.dialogCloneMood();
                         break;
                     case "deleteMood":
+                        if (moodId == this.currentMoodOnUI) {
+                            this.currentMoodOnUI = null;
+                        }
                         await this.soundscape.class.dialogDeleteMood(moodId);
                         break;
                     default:
