@@ -60,12 +60,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
             if (soundscape.class.isPlaying) {
                 const mood = soundscape.class.moods[soundscape.class.activeMoodId];
                 if(mood) {
-                    const category = config_category === "" ? {id: ""} : mood.categories.find(c => c.name === config_category);
-                    if (!category) {
-                        sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
-                    } else {
-                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD && sound.category === category.id);
-                    }
+                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPADUI);
                     name = mood.name;
                     this.soundscape = soundscape.class;
                 }
@@ -86,7 +81,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
 
     async _onRender(context, options) {
         await super._onRender(context, options);
-        const buttons = this.element.querySelectorAll('.soundpad-btn');
+        const buttons = this.element.querySelectorAll('.soundpad-btn1');
         buttons.forEach(button => {
             button.addEventListener('click', async (event) => {
                 if (!this.soundscape.activeMoodId) return;
@@ -124,7 +119,6 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                     }, 100);
 
                 } else if (sound && playlistSound.playing) {
-                    console.warn("Stopping sound:", sound);
                     await this.soundscape.stopSound(sound, this.soundscape.activeMoodId);
                     btn.style.backgroundColor = "";
                     icon.className = "fas fa-play";
@@ -141,7 +135,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
 
                 // Remove any existing sliders first
                 //soundselected
-                const currentBar = this.element.querySelector('.soundpad-volume-slider');
+                const currentBar = this.element.querySelector('.soundpad-volume2-slider');
                 currentBar.style.display = 'flex';
                 //currentBar.querySelector('.soundpad-volume-label').textContent = playlistSound.name;
                 // Remove any existing slider

@@ -337,6 +337,18 @@ Hooks.once('init', () => {
         return parseInt(volume * 100) + "%";
     })
 
+    Handlebars.registerHelper('volumeIcon', function (volume) {
+        const size = parseInt(volume * 100);
+        if (size == 0) {
+            return "fas fa-volume-xmark volume-icon";
+        } else if (size < 50) {
+            return "fas fa-volume-low volume-icon";
+        } else if (size < 80) {
+            return "fas fa-volume volume-icon";
+        }
+        return "fas fa-volume-high volume-icon";
+    })
+
     Handlebars.registerHelper('shortenString', function (str) {
         let decodedFileName = decodeURIComponent(str);
         let fileNameWithoutExtension = decodedFileName.replace(/\.[^/.]+$/, "");
@@ -508,7 +520,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
         button: true,
         //toggle: false, // one-time click
         visible: true, // or () => true
-        onChange: async (e,x) => {
+        onChange: async (e, x) => {
             //ui.notifications.info("Token tool clicked!");
             if (game.soundscapeAdventure.soundpadUI) {
                 await game.soundscapeAdventure.soundpadUI.render(true);

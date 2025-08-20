@@ -316,7 +316,8 @@ export default class Soundscape {
             _soundsConfig.categories = [
                 { id: "", name: "None", type: constants.SOUNDTYPE.LOOP, collapsed: false, sounds: [] },
                 { id: "", name: "None", type: constants.SOUNDTYPE.RANDOM, collapsed: false, sounds: [] },
-                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPAD, collapsed: false, sounds: [] }
+                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPAD, collapsed: false, sounds: [] },
+                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] }
             ]
 
         }
@@ -780,6 +781,7 @@ export default class Soundscape {
     }
     //moveSound(data.soundId, data.moodId, event.target.dataset.dropZone, event.target.dataset?.dropZoneCategory)
     async moveSound(soundId, moodId, target, category = 0) {
+        console.warn(utils.getCallerInfo(), `Moving sound ${soundId} from mood ${moodId} to target ${target} with category ${category}`);
         const sounds = [];
         const sound = this.moods[moodId].getSound(soundId);
         let isGroup = false;
@@ -818,6 +820,20 @@ export default class Soundscape {
                 sounds[i].repeat = false;
                 sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_SOUNDPAD : constants.SOUNDTYPE.SOUNDPAD;
                 sounds[i].category = category ? category : "";
+            }
+        }  else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPADUI) {
+            for (let i = 0; i < sounds.length; i++) {
+                if (isGroup) {
+                    ui.messages.warn(`You cannot move a group of sounds to the Soundpad UI. Please move them individually.`);
+                    return;
+                }
+                const s = this.playlist.sounds.get(sounds[i].id);
+                if (s) {
+                    s.update({ repeat: false });
+                }
+                sounds[i].repeat = false;
+                sounds[i].type = constants.SOUNDTYPE.SOUNDPADUI;
+                sounds[i].category = "";
             }
         }
         // if (sound.status == "on" && this.moods[moodId].status == "playing") {

@@ -87,6 +87,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
     currentMood = "";
     scrollTop = 0;
     current_input = "";
+    libraryIsOpen = false;
 
     static PARTS = {
         // header: { template: '' },
@@ -135,6 +136,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
    */
     _canDragStart(selector) {
         // game.user fetches the current user
+        console.warn("can drag start", selector);
         return this.isEditable;
     }
 
@@ -259,7 +261,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     _onDrop(event, element) {
         event.preventDefault();
-        //
+        console.warn("Drop event:", event);
         if (event.target.dataset?.dropZone) {
             const data = JSON.parse(event.dataTransfer.getData("text/plain"));
             this.soundscape.class.moveSound(data.soundId, data.moodId, event.target.dataset.dropZone, event.target.dataset?.dropZoneCategory);
@@ -278,20 +280,86 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         if (content)
             content.scrollTop = this.scrollTop;
 
-        // STop propagation of dragndrop in the sliders
-        this.element.querySelectorAll('.soundscape-sound-slider').forEach(slider => {
-            slider.addEventListener('mousedown', e => e.stopPropagation());
-            slider.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
-            slider.addEventListener('pointerdown', e => e.stopPropagation());
-            slider.addEventListener('dragstart', e => e.preventDefault());
+        // Stop propagation of drag and drop in volume controls
+        this.element.querySelectorAll('.soundpad-volume-container, .compact-volume-control').forEach(container => {
+            // Set draggable to false
+            container.setAttribute('draggable', 'false');
+
+            container.addEventListener('mousedown', e => e.stopPropagation(), true);
+            container.addEventListener('touchstart', e => e.stopPropagation(), { passive: true, capture: true });
+            container.addEventListener('pointerdown', e => e.stopPropagation(), true);
+            container.addEventListener('dragstart', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, true);
+
+            // Also prevent drag on all child elements
+            container.addEventListener('selectstart', e => e.preventDefault());
         });
 
-        this.element.querySelectorAll('.soundscape-sound-slider-container').forEach(slider => {
-            slider.addEventListener('mousedown', e => e.stopPropagation());
-            slider.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
-            slider.addEventListener('pointerdown', e => e.stopPropagation());
-            slider.addEventListener('dragstart', e => e.preventDefault());
-        });
+        // Debug: Check what sliders we're finding
+        //const volumeSliders = this.element.querySelectorAll('.soundpad-volume-slider, .compact-volume-slider');
+        //console.warn('Found volume sliders:', volumeSliders.length, volumeSliders);
+
+        // volumeSliders.forEach((slider, index) => {
+        //     //console.warn(`Setting up slider ${index}:`, slider);
+
+        //     // Set draggable to false
+        //     slider.setAttribute('draggable', 'false');
+
+        //     // Add multiple event listeners to catch any interaction
+        //     // ['mousedown', 'pointerdown', 'touchstart'].forEach(eventType => {
+        //     //     slider.addEventListener(eventType, (e) => {
+        //     //         console.warn(`${eventType} on slider ${index}`);
+        //     //         e.stopPropagation();
+        //     //         e.stopImmediatePropagation();
+        //     //     }, true);
+        //     // });
+
+        //     slider.addEventListener('dragstart', e => {
+        //         console.warn(`dragstart on slider ${index}`);
+        //         e.preventDefault();
+        //         e.stopPropagation();
+        //         e.stopImmediatePropagation();
+        //         return false;
+        //     }, true);
+
+        //     // Also prevent selection
+        //     slider.addEventListener('selectstart', e => {
+        //         e.preventDefault();
+        //         e.stopPropagation();
+        //     });
+        // });
+
+        // Add document-level event delegation as a fallback
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
+                e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
+                console.warn('Document-level mousedown on volume control');
+                const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
+                console.warn('box:', box);
+                box.draggable = false;
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+
+        document.addEventListener('mouseup', (e) => {
+            if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
+                e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
+                console.warn('Document-level mouseup drag back');
+                const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
+                console.warn('box:', box);
+                box.draggable = true;
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        }, true);
+
+
         // FILTER
         this.element.querySelectorAll('.soundboardadv-main').forEach(container => {
             const input = container.querySelector('.filterInput');
@@ -319,7 +387,15 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         //DRAG AND DROP
         this.element.querySelectorAll(".data-drag").forEach((el) => {
             el.setAttribute("draggable", "true");
-            el.addEventListener("dragstart", this._onDragStart.bind(this));
+
+            // Add a universal dragstart handler that checks the source
+            el.addEventListener("dragstart", (event) => {
+                console.warn('Dragstart event:', event.target, event.target.classList);
+
+                // Otherwise, proceed with normal drag
+                console.warn('Allowing normal drag');
+                this._onDragStart(event);
+            });
         });
         // Setup drop zone
         this.element.querySelectorAll(".drop-zone").forEach((el) => {
@@ -359,6 +435,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                             if (element.getAttribute('data-mood-id') === moodId) {
                                 element.className = 'soundboardadv-main mood-active';
+                                console.warn("mood active", moodId);
                                 this.soundscape.class.currentMoodOnUI = moodId;
                             } else {
                                 element.className = 'soundboardadv-main';
@@ -409,8 +486,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         });
 
         // Sound controls
-        this.element.querySelectorAll(".sound-control").forEach((button) => {
-            button.addEventListener("click", (event) => {
+        this.element.querySelectorAll(".sound-control").forEach(async (button) => {
+            button.addEventListener("click", async (event) => {
                 const content = this.element.querySelector('.mood-active');
                 this.scrollTop = content?.scrollTop ?? 0;
                 const action = button.dataset.action;
@@ -446,12 +523,12 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                         break;
                     case "volume":
-                        const volume_ui = button.parentNode.querySelector('#volume-value-1');
+                        const volume_ui = button.parentNode.querySelector('.volume-value');
                         volume_ui.innerText = parseInt(button.value * 100) + "%";
                         this.soundscape.class.changeSoundVolume(moodId, soundId, button.value);
                         break;
                     case "intensity":
-                        const intensity_ui = button.parentNode.querySelector('#intensity-value-1');
+                        const intensity_ui = button.parentNode.querySelector('.compact-intensity-slider');
                         intensity_ui.innerText = parseInt(button.value);
                         this.soundscape.class.changeSoundIntensity(moodId, group, button.value);
                         break;
@@ -471,11 +548,66 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             this.soundscape.class.moods[moodId].stopSound(moodId, sounds)
                         }
                         break;
+                    case "preview-sound":
+                        const soundToPreview = this.soundscape.class.moods[moodId].getSound(soundId);
+                        //console.warn("preview sound", soundToPreview);
+                        const soundToPlay = this.soundscape.class.playlist.sounds.get(soundToPreview.id);
+                        await soundToPlay.load();
+                        console.warn("soundToPlay", soundToPlay.sound);
+                        const isLoop = soundToPlay.sound.loop;
+                        const volume = soundToPlay.sound.volume;
+                        if (soundToPlay.playing) {
+                            console.warn("Sound is playing");
+                            this.soundscape.class.playlist.stopSound(soundToPlay);
+                        } else {
+                            console.warn("Sound is not playing");
+                            const preview_icon = button.querySelector(".sound-control-icon");
+                            preview_icon.style.color = "orange";
+                            preview_icon.className = "fas fa-ear-listen";
+                            soundToPlay.update({ "repeat": false, "volume": 0.6 });
+                            await this.soundscape.class.playlist.playSound(soundToPlay);
+                            const previewEndEvent = () => {
+                                console.warn("Sound ended");
+                                soundToPlay.sound.removeEventListener('end', previewEndEvent);
+                                this.soundscape.class.playlist.stopSound(soundToPlay);
+                            };
+
+                            const previewStopEvent = () => {
+                                console.warn("Sound stopped");
+                                soundToPlay.sound.removeEventListener('stop', previewStopEvent);
+                                preview_icon.className = "fas fa-ear sound-control";
+                                preview_icon.style.color = "";
+                                soundToPlay.update({ "repeat": isLoop, "volume": volume });
+                            }
+                            soundToPlay.sound.addEventListener(
+                                'end',
+                                previewEndEvent
+                            );
+                            soundToPlay.sound.addEventListener(
+                                'stop',
+                                previewStopEvent
+                            )
+                            return;
+                        }
+
+                        break;
                     default:
                         console.warn("action not found", action);
 
                 }
                 this.myRender(true);
+            });
+        });
+
+        // block dragging of soundscape sounds
+        this.element.querySelectorAll('.soundpad-volume-slider').forEach(slider => {
+            slider.addEventListener('mousedown', e => {
+                console.warn("bla")
+                e.stopPropagation(); // Prevent drag start bubbling up
+            });
+            slider.addEventListener('click', e => {
+                console.warn("click")
+                e.preventDefault(); // Disable dragging the whole element
             });
         });
 
@@ -529,7 +661,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         this.element.querySelectorAll('.sound-category').forEach(el => {
             const button = el.querySelector(".category-title");
-            const collapeDiv = el.querySelector(".soundscapeadv-container");
+            const collapeDiv = el.querySelector(".soundscapeadv-container, .soundpad-list-container");
             if (button && collapeDiv) {
                 button.addEventListener("click", (e) => {
                     const icon = e.currentTarget.querySelector("i");
@@ -585,6 +717,23 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             })
 
         });
+
+        //     const side_bar_sound_library = `
+        //     `;
+        this.element.querySelectorAll('.soundscape-sliding-ear').forEach(element => {
+            element.addEventListener('click', async (event) => {
+                console.warn("click on sliding panel");
+                const slidingPanel = await this.element.querySelector('.slide-active');
+                slidingPanel.classList.toggle('open');
+                this.libraryIsOpen = !this.libraryIsOpen;
+                //slidingPanel.className = ""
+                console.warn("slidingPanel", slidingPanel.className);
+            });
+
+        });
+
+        const window_content = this.element.querySelector('.window-content'); //.insertAdjacentHTML('afterend', side_bar_sound_library);
+        window_content.style.overflow = 'visible';
 
 
     }
@@ -1051,8 +1200,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }
 
         const moods = [];
+        
         for (const key in this.soundscape.class.moods) {
             const mood = this.soundscape.class.moods[key];
+            console.warn("CATEGORIES")
+        console.warn( mood.categories)
             const sounds = [{
                 type: constants.SOUNDTYPE.LOOP,
                 name: "Loop",
@@ -1072,6 +1224,12 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 categories: mood.categories
                     .filter(el => el?.type == constants.SOUNDTYPE.SOUNDPAD)
                     .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] })),
+            },{
+                type: constants.SOUNDTYPE.SOUNDPADUI,
+                name: "Soundpad UI",
+                categories:  mood.categories
+                    .filter(el => el?.type == constants.SOUNDTYPE.SOUNDPADUI)
+                    .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] })),
             }]
 
             for (let i = 0; i < mood.sounds.length; i++) {
@@ -1082,6 +1240,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     sound_index = 1;
                 } else if (sound.type == constants.SOUNDTYPE.SOUNDPAD || sound.type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
                     sound_index = 2;
+                } else if (sound.type == constants.SOUNDTYPE.SOUNDPADUI) {
+                    sound_index = 3;
                 }
                 const index = sound.category != "" ? sounds[sound_index].categories.findIndex(el => el.id == sound.category) : 0;
                 if (sound.type == constants.SOUNDTYPE.GROUP_LOOP || sound.type == constants.SOUNDTYPE.LOOP) {
@@ -1110,6 +1270,13 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     sounds[sound_index].categories[index].sounds.push(sound)
                 }
             }
+            // befora add to the sounds to the mood we need to sort the sounds within the categories
+            console.warn("SOUNDS", sounds)
+            for (let i = 0; i < sounds.length; i++) {
+                sounds[i].categories.forEach(category => {
+                    category.sounds.sort((a, b) => a.name.localeCompare(b.name));
+                });
+            }
             moods.push({
                 id: this.soundscape.class.moods[key].id,
                 name: this.soundscape.class.moods[key].name,
@@ -1118,12 +1285,19 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 sounds: sounds
             })
         }
+        let library = [];
+        if (this.currentMoodOnUI) {
+            library = this.soundscape.class.moods[this.currentMoodOnUI].sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
+            library = library.sort((a, b) => a.name.localeCompare(b.name));
+        }
         return {
             name: this.soundscape.class.name,
             moods: moods,
             soundscapeId: this.soundscape.class.id,
             off_visible: this.soundscape.class.visible_off_sounds,
-            activeMood: this.currentMoodOnUI
+            activeMood: this.currentMoodOnUI,
+            library: library,
+            libraryIsOpen: this.libraryIsOpen
         }
     }
 
