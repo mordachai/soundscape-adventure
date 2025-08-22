@@ -307,6 +307,7 @@ SOUND CONTROL
   align-items: center;
   /* max-width: 1200px; */
   justify-items: center;
+  min-height: 50px;
 }
 
 .soundscapeadv-element {
@@ -1030,6 +1031,7 @@ input:checked+.soundscape-sound-slider-switch:before {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   margin-top: 5px;
+  min-height: 50px;
 }
 
 .soundpad-list-container-library {
@@ -1044,6 +1046,14 @@ input:checked+.soundscape-sound-slider-switch:before {
 }
 
 .soundpad-list-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 8px 0;
+  cursor: grab;
+  transition: background-color 0.2s ease;
+  margin-bottom: 2px;
+}
+
+.library-sound-item {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   padding: 8px 0;
   cursor: grab;
@@ -1624,6 +1634,7 @@ input:checked+.soundscape-sound-slider-switch:before {
   cursor: pointer;
   z-index: 20;
   transition: background-color 0.3s ease-in-out;
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
 .soundscape-sliding-panel {
@@ -1671,3 +1682,8 @@ input:checked+.soundscape-sound-slider-switch:before {
 .soundscape-sliding-panel .volume-value {
   color: #ccc;
 }
+
+/* .my-package-news {
+  overflow-y: scroll;
+  max-height: 600px;
+} */

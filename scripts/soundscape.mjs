@@ -442,7 +442,7 @@ export default class Soundscape {
         for (let i = 0; i < sounds.length; i++) {
             await this.stopSound(sounds[i], moodId, true);
         }
-        const soundpadSounds = await this.moods[moodId].sounds.filter(obj => obj.type == constants.SOUNDTYPE.SOUNDPAD);
+        const soundpadSounds = await this.moods[moodId].sounds.filter(obj => obj.type == constants.SOUNDTYPE.SOUNDPADUI);
         for (let i = 0; i < soundpadSounds.length; i++) {
              await this.stopSound(soundpadSounds[i], moodId, true);
         }
@@ -644,8 +644,7 @@ export default class Soundscape {
 
     async playSound(soundConfig, moodId) {
         const isPlayingMood = this.moods[moodId].status === "playing";
-        const isSoundpad = soundConfig.type === constants.SOUNDTYPE.GROUP_SOUNDPAD ||
-            soundConfig.type === constants.SOUNDTYPE.SOUNDPAD;
+        const isSoundpad = soundConfig.type === constants.SOUNDTYPE.SOUNDPADUI;
 
         if (!isPlayingMood && isSoundpad) return;
         if (soundConfig.volume == 0) {
@@ -798,6 +797,9 @@ export default class Soundscape {
                 if (s) {
                     s.update({ repeat: false });
                 }
+                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                    this.playlist.stopSound(s);
+                }
                 sounds[i].repeat = false;
                 sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_RANDOM : constants.SOUNDTYPE.RANDOM;
                 sounds[i].category = category ? category : "";
@@ -808,6 +810,9 @@ export default class Soundscape {
                 if (s) {
                     s.update({ repeat: true });
                 }
+                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                    this.playlist.stopSound(s);
+                }
                 sounds[i].repeat = true;
                 sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_LOOP : constants.SOUNDTYPE.LOOP;
                 sounds[i].category = category ? category : "";
@@ -815,6 +820,9 @@ export default class Soundscape {
         } else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPAD) {
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
+                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                    this.playlist.stopSound(s);
+                }
                 if (s) {
                     s.update({ repeat: false });
                 }
@@ -831,6 +839,7 @@ export default class Soundscape {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
                     s.update({ repeat: false });
+                    this.playlist.stopSound(s);
                 }
                 sounds[i].repeat = false;
                 sounds[i].type = constants.SOUNDTYPE.SOUNDPADUI;

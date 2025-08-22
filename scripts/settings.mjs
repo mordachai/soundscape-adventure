@@ -82,11 +82,11 @@ Hooks.once('init', () => {
     const version = game.settings.get('soundscape-adventure', "newsDialog");
     if (version != constants.MODULE.version) {
       const templatePath = "/modules/soundscape-adventure/templates/news.html";
-      const html_content = await renderTemplate(templatePath, {});
+      const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, {});
       
       let dialog = new foundry.applications.api.DialogV2({
         window: { title: "Soundscape Adventure NEWS", classes: ["my-package"] },
-        size: { width: 600, height: 100 },
+        position: { width: 800, height: 600 },
         content: html_content,
         buttons: [{
             action: "choice",
@@ -97,8 +97,9 @@ Hooks.once('init', () => {
         }]
       });
       await dialog.render(true);
-      console.warn(dialog)
-      dialog.classList.add("my-custom-dialog");
+      dialog.classList.add("my-package-news");
+      const content = dialog.element.querySelector(".window-content");
+      content.style.overflowY = "scroll";
     }
   }
 
