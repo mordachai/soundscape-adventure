@@ -73,7 +73,7 @@ export default class Soundscape {
             } else {
                 
                 this.playlistId = this.playlist.id;
-                this.saveMoodsConfig();
+                await this.saveMoodsConfig();
             }
         }
 
@@ -84,7 +84,7 @@ export default class Soundscape {
             this.moods[key] = moodConfig;
             if (moods[key].status == "playing") {
                 this.activeMoodId = key;
-                this.playMood(key, false);
+                await this.playStopMood(key, false);
             }
         }
         // const soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
@@ -97,7 +97,7 @@ export default class Soundscape {
     }
 
     async reloadSoundscape() {
-        this.init();
+        await this.init();
     }
 
     async fileExists(path) {
@@ -386,7 +386,7 @@ export default class Soundscape {
 
     async playStopMood(moodId) {
         if (this.moods[moodId].status == "playing") {
-            this.stopMood(moodId);
+            await this.stopMood(moodId);
         } else {
             if (this.activeMoodId && this.activeMoodId != moodId) {
                 await this.stopMood(this.activeMoodId);
@@ -781,7 +781,6 @@ export default class Soundscape {
     }
     //moveSound(data.soundId, data.moodId, event.target.dataset.dropZone, event.target.dataset?.dropZoneCategory)
     async moveSound(soundId, moodId, target, category = 0) {
-        console.warn(utils.getCallerInfo(), `Moving sound ${soundId} from mood ${moodId} to target ${target} with category ${category}`);
         const sounds = [];
         const sound = this.moods[moodId].getSound(soundId);
         let isGroup = false;
@@ -833,7 +832,7 @@ export default class Soundscape {
         }  else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPADUI) {
             for (let i = 0; i < sounds.length; i++) {
                 if (isGroup) {
-                    ui.messages.warn(`You cannot move a group of sounds to the Soundpad UI. Please move them individually.`);
+                    ui.notifications.warn(`You cannot move a group of sounds to the Soundpad UI. Please move them individually.`);
                     return;
                 }
                 const s = this.playlist.sounds.get(sounds[i].id);
@@ -1254,5 +1253,18 @@ export default class Soundscape {
 
         this.moods[moodId].has_changes = true;
 
+    }
+
+    //the following functions are used by external modules
+    getMoods() {
+        return  Object.values(this.moods).map(obj => obj.name);
+    }
+    async playStopMoodByName(moodName, force = false) {
+        const mood = Object.values(this.moods).find(m => m.name.toLowerCase() == moodName.toLowerCase());
+        if (mood) {
+            this.playStopMood(mood.id, force);
+        } else {
+            ui.notifications.warn(`Mood ${moodName} not found in Soundscape ${this.name}`);
+        }
     }
 }

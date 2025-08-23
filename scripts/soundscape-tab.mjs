@@ -270,9 +270,11 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			// Reload soundscape action
 			const reloadButton = soundscape_html.querySelector('[data-action="soundscape-reload"]');
 			if (reloadButton) {
-				reloadButton.addEventListener("click", (event) => {
+				reloadButton.addEventListener("click", async (event) => {
 					event.preventDefault(); // Optional: prevents default behavior if it's a link
-					SoundscapeAdventure.soundscapes[reloadButton.dataset.soundboardId].class.reloadSoundscape();
+					reloadButton.className = "soundboard-control fa fa-spinner fa-spin";
+					await SoundscapeAdventure.soundscapes[reloadButton.dataset.soundboardId].class.reloadSoundscape();
+					reloadButton.className = "soundboard-control fa-solid fa-rotate-right";
 					// Your custom logic here
 				});
 			}
@@ -311,6 +313,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 						switch (action) {
 							case "playStopMood":
+								playButton.className = "fa fa-spinner fa-spin mood-control soundscape-tab-button";
 								await this.soundscapes[soundscapeId].class.playStopMood(moodId);
 								break;
 							case "deleteMood":

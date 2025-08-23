@@ -19,9 +19,15 @@ Hooks.on('deleteCombat', (combat, updateData) => {
 
 
 
+
 /**
  * MODULE HOOKS
  */
+
+Hooks.on('SoundscapeAdventure-Init', (sidebar, html) => {
+     game.soundscapeAdventure = SoundscapeAdventure;
+      Hooks.call("SoundscapeAdventure-Ready");
+});
 Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
     ui.sidebar.parts[cModuleName].render(true);
     coreInit();
@@ -489,6 +495,7 @@ Hooks.once('ready', async () => {
     await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
     utils.log(utils.getCallerInfo(), `Saving soundscapes ${validSoundscapes.join(";")}`, constants.LOGLEVEL.INFO);
     Hooks.call("SoundscapeAdventure-UpdateSidebar");
+    Hooks.call("SoundscapeAdventure-Init");
 
 });
 

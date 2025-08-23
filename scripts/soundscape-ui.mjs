@@ -136,7 +136,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
    */
     _canDragStart(selector) {
         // game.user fetches the current user
-        console.warn("can drag start", selector);
         return this.isEditable;
     }
 
@@ -262,18 +261,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
     _onDrop(event, element) {
         event.preventDefault();
         const dropZone = event.target.closest('.drop-zone');
-        console.warn("Drop zone:", dropZone.dataset);
         if (dropZone.dataset.dropZoneType) {
-            console.warn("Drop zone:", dropZone);
             const data = JSON.parse(event.dataTransfer.getData("text/plain"));
             this.soundscape.class.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
         }
         this.myRender(true);
-
-
-
-
-        // Handle the drop (e.g., play sound, add to playlist, etc.)
     }
 
     _onRender(context, options) {
@@ -300,47 +292,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             container.addEventListener('selectstart', e => e.preventDefault());
         });
 
-        // Debug: Check what sliders we're finding
-        //const volumeSliders = this.element.querySelectorAll('.soundpad-volume-slider, .compact-volume-slider');
-        //console.warn('Found volume sliders:', volumeSliders.length, volumeSliders);
-
-        // volumeSliders.forEach((slider, index) => {
-        //     //console.warn(`Setting up slider ${index}:`, slider);
-
-        //     // Set draggable to false
-        //     slider.setAttribute('draggable', 'false');
-
-        //     // Add multiple event listeners to catch any interaction
-        //     // ['mousedown', 'pointerdown', 'touchstart'].forEach(eventType => {
-        //     //     slider.addEventListener(eventType, (e) => {
-        //     //         console.warn(`${eventType} on slider ${index}`);
-        //     //         e.stopPropagation();
-        //     //         e.stopImmediatePropagation();
-        //     //     }, true);
-        //     // });
-
-        //     slider.addEventListener('dragstart', e => {
-        //         console.warn(`dragstart on slider ${index}`);
-        //         e.preventDefault();
-        //         e.stopPropagation();
-        //         e.stopImmediatePropagation();
-        //         return false;
-        //     }, true);
-
-        //     // Also prevent selection
-        //     slider.addEventListener('selectstart', e => {
-        //         e.preventDefault();
-        //         e.stopPropagation();
-        //     });
-        // });
-
         // Add document-level event delegation as a fallback
         document.addEventListener('mousedown', (e) => {
             if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
                 e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
-                console.warn('Document-level mousedown on volume control');
                 const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
-                console.warn('box:', box);
                 box.draggable = false;
                 e.stopPropagation();
                 e.stopImmediatePropagation();
@@ -350,9 +306,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         document.addEventListener('mouseup', (e) => {
             if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
                 e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
-                console.warn('Document-level mouseup drag back');
                 const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
-                console.warn('box:', box);
                 box.draggable = true;
                 e.preventDefault();
                 e.stopPropagation();
@@ -367,11 +321,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             const input = container.querySelector('.filterInput');
             input.value = this.current_input;
             const items = container.querySelectorAll('.library-sound-item');
-            console.warn("Current input", this.current_input);
 
             if (this.current_input) {
                 items.forEach(item => {
-                    console.warn("item", item);
                     const title = item.querySelector('.library-sound-name')?.dataset?.fullName.toLowerCase() || '';
                     item.style.display = title.includes(this.current_input) ? '' : 'none';
                 });
@@ -380,15 +332,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             input.addEventListener('input', () => {
                 const filter = input.value.toLowerCase();
                 this.current_input = filter;
-                console.warn("Filter input:", filter);
                 
                 const content = container.closest('.soundscape-sliding-panel-content');
                 const items = content.querySelectorAll('.library-sound-item');
-                console.warn("Items to filter:", items.length);
                 items.forEach(item => {
-                    console.warn("item", item);
                     const title = item.querySelector('.library-sound-name')?.dataset?.fullName.toLowerCase() || '';
-                    console.warn("title,filter", title,filter, title.includes(filter));
                     item.style.display = title.includes(filter) ? '' : 'none';
                 });
             });
@@ -399,10 +347,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
             // Add a universal dragstart handler that checks the source
             el.addEventListener("dragstart", (event) => {
-                console.warn('Dragstart event:', event.target, event.target.classList);
-
-                // Otherwise, proceed with normal drag
-                console.warn('Allowing normal drag');
                 this._onDragStart(event);
             });
         });
@@ -426,11 +370,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 switch (action) {
                     case "playStopMood":
                         const icon = button.querySelector(".fa");
-                        if (!this.soundscape.isPlaying) {
-                            icon.className = "fa fa-stop";
-                        } else {
-                            icon.className = "fa fa-play";
-                        }
+                        icon.className = "fa fa-spinner fa-spin mood-control soundscape-tab-button";
                         await this.soundscape.class.playStopMood(moodId);
                         if (this.element) {
                             const content = await this.element.querySelector('.mood-active');
@@ -444,7 +384,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                             if (element.getAttribute('data-mood-id') === moodId) {
                                 element.className = 'soundboardadv-main mood-active';
-                                console.warn("mood active", moodId);
                                 this.soundscape.class.currentMoodOnUI = moodId;
                             } else {
                                 element.className = 'soundboardadv-main';
@@ -468,7 +407,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             }
                         }
                         game.settings.set(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI", (currentMoodSOnUI.filter(el => el != "true")).join(":"));
-                        this.myRender(true);
                         break;
                     case "saveMood":
                         const save_btn = parent.querySelector(".fa-download");
@@ -564,7 +502,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             await this.soundscape.class.playSound(sound, moodId);
                             
                              const previewEndEvent = () => {
-                                console.warn("Sound ended");
                                 s.sound.removeEventListener('end', previewEndEvent);
                                 s.sound.removeEventListener('stop', previewEndEvent);
                                 i.className = "fas fa-play";
@@ -593,30 +530,24 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         break;
                     case "preview-sound":
                         const soundToPreview = this.soundscape.class.moods[moodId].getSound(soundId);
-                        //console.warn("preview sound", soundToPreview);
                         const soundToPlay = this.soundscape.class.playlist.sounds.get(soundToPreview.id);
                         await soundToPlay.load();
-                        console.warn("soundToPlay", soundToPlay.sound);
                         const isLoop = soundToPlay.sound.loop;
                         const volume = soundToPlay.sound.volume;
                         if (soundToPlay.playing) {
-                            console.warn("Sound is playing");
                             this.soundscape.class.playlist.stopSound(soundToPlay);
                         } else {
-                            console.warn("Sound is not playing");
                             const preview_icon = button.querySelector(".sound-control-icon");
                             preview_icon.style.color = "orange";
                             preview_icon.className = "fas fa-stop sound-control";
                             soundToPlay.update({ "repeat": false, "volume": 0.6 });
                             await this.soundscape.class.playlist.playSound(soundToPlay);
                             const previewEndEvent = () => {
-                                console.warn("Sound ended");
                                 soundToPlay.sound.removeEventListener('end', previewEndEvent);
                                 this.soundscape.class.playlist.stopSound(soundToPlay);
                             };
 
                             const previewStopEvent = () => {
-                                console.warn("Sound stopped");
                                 soundToPlay.sound.removeEventListener('stop', previewStopEvent);
                                 preview_icon.className = "fas fa-play sound-control";
                                 preview_icon.style.color = "";
@@ -645,11 +576,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         // block dragging of soundscape sounds
         this.element.querySelectorAll('.soundpad-volume-slider').forEach(slider => {
             slider.addEventListener('mousedown', e => {
-                console.warn("bla")
                 e.stopPropagation(); // Prevent drag start bubbling up
             });
             slider.addEventListener('click', e => {
-                console.warn("click")
                 e.preventDefault(); // Disable dragging the whole element
             });
         });
@@ -719,7 +648,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     const type = e.currentTarget.dataset.categoryType;
 
                     const category = this.soundscape.class.moods[moodId].categories.find(el => el.id == categoryId && el.type == type);
-                    console.warn("category", category); 
                     category.collapsed = !category.collapsed;
 
 
@@ -766,7 +694,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         //     `;
         this.element.querySelectorAll('.soundscape-sliding-ear').forEach(element => {
             element.addEventListener('click', async (event) => {
-                console.warn("click on sliding panel");
                 const slidingPanel = await this.element.querySelector('.slide-active');
                 const ear = await this.element.querySelector('.soundscape-sliding-ear');
                 slidingPanel.classList.toggle('open');
@@ -776,8 +703,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 } else {
                     ear.innerText = "❯";
                 }
-                //slidingPanel.className = ""
-                console.warn("slidingPanel", slidingPanel.className);
             });
 
         });
@@ -1131,7 +1056,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         {
                             action: "no",
                             label: "No",
-                            callback: () => { console.log("Sound not removed") },
+                            callback: () => { 
+                                utils.log(utils.getCallerInfo(),`Sound not removed`, constants.LOGLEVEL.INFO);
+                            },
                             icon: "fas fa-times"
                         }]
                 });
@@ -1213,8 +1140,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         if (elements.soundName)
             await this.soundscape.class.updateSoundName(soundId, elements.soundName.value);
         await this.soundscape.class.saveTrigger(moodId, soundId, triggers);
-        await this.soundscape.class.updateSoundIcon(soundId, elements.soundIcon.value);
-        //console.warn("Sound Icon: ", elements.soundIcon.value);
+        if (elements?.soundIcon?.value) {
+            await this.soundscape.class.updateSoundIcon(soundId, elements.soundIcon.value);
+        }
         this.myRender(true);
     }
 

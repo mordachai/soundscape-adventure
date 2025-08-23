@@ -122,6 +122,18 @@ class SoundscapeAdventure {
         }
         await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes.join(";"));
     }
+
+    // Below are some utility methods for external modules access the soundscapes
+    getSoundscapes() {
+        return Object.values(this.soundscapes).map(obj => obj.name);
+    }
+
+    getSoundscape(soundscapeName) {
+        const obj = Object.values(this.soundscapes).filter(obj => obj.name.includes(soundscapeName));
+        if (obj.length > 0) {
+            return obj[0].class;
+        }
+    }
 }
 
 const instance = new SoundscapeAdventure();

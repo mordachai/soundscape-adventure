@@ -92,19 +92,17 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                 const playlist = this.soundscape.playlist;
                 const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
                 await playlistSound.load();
-                console.warn("Playlist sound", playlistSound);
-                console.warn("Sound", sound);
-                console.warn("btn", btn);
                 const icon = btn.querySelector('i');
                 if (!playlistSound) {
-                    console.warn("Sound not found in playlist");
+                    utils.log(utils.getCallerInfo(),`Sound not found in the playlist ${this.soundscape.playlist.name}: ${sound.path}`, constants.LOGLEVEL.WARN);
                     return;
                 }
                 if (sound && !playlistSound.playing) {
-                    console.warn("Playing sound", sound);
                     // before playing, make sure it isn't configured as a loop sound
                     await this.soundscape.playSound(sound, this.soundscape.activeMoodId);
                     btn.style.backgroundColor = "#c9593f";
+                    const icon = btn.querySelector("i");
+                    icon.style.color = "#c9593f";
 
                     //icon.classList.toggle('fa-play', !playlistSound.playing);
                     icon.className = "fas fa-stop";
@@ -113,6 +111,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                             'end',
                             (event) => {
                                 btn.style.backgroundColor = "";
+                                icon.style.color = "";
                                 icon.className = "fas fa-play";
                                 btn.style.opacity = 0.5;
                             }
@@ -121,6 +120,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                             'stop',
                             (event) => {
                                 btn.style.backgroundColor = "";
+                                icon.style.color = "";
                                 icon.className = "fas fa-play";
                                 btn.style.opacity = 0.5;
                             }

@@ -236,7 +236,7 @@
 
     <div class="soundscape-sliding-panel {{#if libraryIsOpen}}open{{/if}} slide-active"
         style="{{#if (not activeMood)}} display: none; {{/if}}">
-        <div class="soundscape-sliding-ear">❯</div>
+        <div class="soundscape-sliding-ear">{{#if libraryIsOpen}}❮{{else}}❯{{/if}}</div>
         <div class="soundscape-sliding-panel-content">
             
             {{!-- <div class="flexrow dropzone-area drop-zone" data-drop-zone-type="3" data-drop-zone-category="" style="    border: 2px dashed #ffffff;
@@ -253,7 +253,7 @@
                     </div>
                     <p style="flex: 3">Drop sounds to the library here</p>
                 </div> --}}
-                <h2 class="">Library</h2>
+                <h2 class="">Sound Library</h2>
                 <input type="text" class="filterInput" placeholder="Search sound by name..." class="form-control" />
                 
                 
