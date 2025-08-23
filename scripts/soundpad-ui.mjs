@@ -47,11 +47,6 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
      */
     async _prepareContext(options) {
         const canModify = game.user.isGM || game.user.hasRole("ASSISTANT");
-        let config_category = game.settings.get('soundscape-adventure', "configCategory");
-        if (!config_category) {
-            ui.notifications.warn("No soundpad UI category configured. Using all sounds without category.");
-            config_category = "";
-        }
         const soundscapes = SoundscapeAdventure.soundscapes;
         let name = "";
         let sounds = [];
@@ -81,7 +76,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
 
     async _onRender(context, options) {
         await super._onRender(context, options);
-        const buttons = this.element.querySelectorAll('.soundpad-btn1');
+        const buttons = this.element.querySelectorAll('.soundpad-btn');
         buttons.forEach(button => {
             button.addEventListener('click', async (event) => {
                 if (!this.soundscape.activeMoodId) return;

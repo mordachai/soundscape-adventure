@@ -840,6 +840,9 @@ export default class Soundscape {
                     s.update({ repeat: false });
                     this.playlist.stopSound(s);
                 }
+                if (sounds[i].type == constants.SOUNDTYPE.RANDOM || sounds[i].type == constants.SOUNDTYPE.GROUP_RANDOM) {
+                    this.randomSoundManager.stop(this.playlistId, sounds[i].id);
+                }
                 sounds[i].repeat = false;
                 sounds[i].type = constants.SOUNDTYPE.SOUNDPADUI;
                 sounds[i].category = "";
@@ -1073,49 +1076,15 @@ export default class Soundscape {
         playlistSounds.style.textAlign = 'left';
         playlistSounds.style.width = '100%';
 
-        for (const key in this.moods) {
-            playlistSounds.appendChild(this.moods[key].render(this.id, current_playing));
+        // order moods by name
+        const orderedMoods = Object.values(this.moods).sort((a, b) => a.name.localeCompare(b.name));
+
+        for (const key in orderedMoods) {
+            playlistSounds.appendChild(orderedMoods[key].render(this.id, current_playing));
         }
         directoryItem.appendChild(header);
         directoryItem.appendChild(playlistSounds);
         return directoryItem;
-
-
-        const parser = new DOMParser();
-
-        const doc = parser.parseFromString(`
-            
-            <!-- Directories List -->
-                <li class="directory-item document playlist flexrow" data-entry-id="g1xgdLmEbkfgHbms" data-document-id="g1xgdLmEbkfgHbms" style="display: flex;">
-                    <header class="playlist-header flexrow" style="width: 100%;">
-                        <h4 class="entry-name playlist-name" draggable="true" style="color: var(--color-light-3); flex: 4;">
-                            <i class="collapse fa fa-angle-down"></i> Soundscape: Farm 
-                        </h4>
-                        <div class="playlist-controls flexrow" style="text-align: center; align-items: center; justify-content: center; gap: 5px;   ">
-                            <a class="soundboard-control fa-solid fa-speaker" style=" font-size: large;" data-action="sound-create" data-tooltip="Open Soundscape" data-soundboard-id="Z5Ilcju6xHE3McR3"></a>
-                            <a class="soundboard-control fa-solid fa-rotate-right"  style=" font-size: large;" data-action="sound-reload" data-tooltip="Reload Soundscape" data-soundboard-id="Z5Ilcju6xHE3McR3"></a>
-                        </div>
-                    </header>
-                    <ol class="playlist-sounds" style="text-align: left; 
-    width: 100%;">
-                        <li id="Peaceful Day" class="playlist-mood flexrow" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="bSGNaKBHA0Z6acWy" style="display: flex;">
-                            <strong>Peaceful Day</strong>
-                            <div class="sound-controls flexrow">
-                                <a class="sound-control fa-solid fa-trash" data-action="mood-delete" data-tooltip="Delete Mood" data-soundscape-id="undefined" data-mood-id="bSGNaKBHA0Z6acWy"></a>
-                                <a class="soundboard-control fas fa-play" data-action="sound-play" data-tooltip="Play Mood" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="bSGNaKBHA0Z6acWy"></a>
-                            </div>
-                        </li>
-                        <li id="Bustling Haverst" class="mood flexrow" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="piZeSkBGVVzKuQ1b" style="display: flex;">
-                            <strong>Bustling Haverst</strong>
-                            <div class="sound-controls flexrow">
-                                <a class="sound-control fa-solid fa-trash" data-action="mood-delete" data-tooltip="Delete Mood" data-soundscape-id="undefined" data-mood-id="piZeSkBGVVzKuQ1b"></a>
-                                <a class="soundboard-control fas fa-play" data-action="sound-play" data-tooltip="Play Mood" data-soundboard-id="Z5Ilcju6xHE3McR3" data-mood-id="piZeSkBGVVzKuQ1b"></a>
-                            </div>
-                        </li>
-                    </ol>
-                </li>`, 'text/html');
-        const element = doc.body;
-        return element;
     }
 
     async dialogCloneMood() {
