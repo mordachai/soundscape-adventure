@@ -8,24 +8,17 @@ const cFolderIcon = "fa-plus";
 
 class SoundscapeTab /*extends SidebarTab*/ {
 	constructor(options) {
-		//super(options);
 		this.soundscapes = null; //options.soundscapes;
 
 		this.tab = options.tab;
 		this._oldUI = options.oldUI;
-
-		//this.notes = NoteManager.viewableNotes();
-
 		this.tickNotes = [];
-
 		this.tickCount = 0;
 		this.notes = {};
 
 		if (this.tab) {
 			this.render();
 		}
-
-		//Hooks.on(cModuleName + ".updateNote", (pNewNoteData, pNoteDataUpdate, pContext) => {this.renderUpdate(pNewNoteData, pNoteDataUpdate, pContext)});
 
 		Hooks.on("userConnected", () => { this.checkEnabled() });
 
@@ -270,9 +263,11 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			// Reload soundscape action
 			const reloadButton = soundscape_html.querySelector('[data-action="soundscape-reload"]');
 			if (reloadButton) {
-				reloadButton.addEventListener("click", (event) => {
+				reloadButton.addEventListener("click", async (event) => {
 					event.preventDefault(); // Optional: prevents default behavior if it's a link
-					SoundscapeAdventure.soundscapes[reloadButton.dataset.soundboardId].class.reloadSoundscape();
+					reloadButton.className = "soundboard-control fa fa-spinner fa-spin";
+					await SoundscapeAdventure.soundscapes[reloadButton.dataset.soundboardId].class.reloadSoundscape();
+					reloadButton.className = "soundboard-control fa-solid fa-rotate-right";
 					// Your custom logic here
 				});
 			}
@@ -311,6 +306,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 						switch (action) {
 							case "playStopMood":
+								playButton.className = "fa fa-spinner fa-spin mood-control soundscape-tab-button";
 								await this.soundscapes[soundscapeId].class.playStopMood(moodId);
 								break;
 							case "deleteMood":
@@ -340,53 +336,14 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 			if (vClass) {
 				this.notes[vKey] = new vClass(vKey, this.notes[vKey], this.defaultNoteOptions);
-
-				//this.entries.appendChild(this.notes[vKey].render());
-
 				let vElement = this.notes[vKey].render();
-
-				/*
-				if (vElement && this.notes[vKey].valid) {
-					this.entries.appendChild(vElement);
-				}
-				else {
-					delete this.notes[vKey];
-				}
-				*/
 			}
 			else {
 				delete this.notes[vKey];
 			}
 		}
-
-		//this.sortEntries();
 		this.rebuildTickList();
 	}
-
-	/*
-	renderUnsorted() {
-		let vUsers = Array.from(game.users).filter(vUser => !vUser.isSelf);
-		
-		for (let vUser of vUsers) {
-			let vUserCategory = document.createElement("details");
-			let vUserTitle = document.createElement("summary");
-			vUserTitle.style.marginLeft = "15px";
-			vUserTitle.innerHTML = vUser.name;
-			
-			let vUserCatDIV = document.createElement("div");
-			vUserCatDIV.style.height = "auto";
-			vUserCatDIV.style.marginLeft = "15px";
-			
-			vUserCategory.appendChild(vUserTitle);
-			vUserCategory.appendChild(vUserCatDIV);
-			
-			this.unsortedMain.appendChild(vUserCategory);
-			
-			this.unsortedCats[vUser.id] = vUserCategory;
-			this.unsortedCatDIVs[vUser.id] = vUserCatDIV;
-		}
-	}
-	*/
 
 	renderPopout() {
 		new tabWindow().render(true);
@@ -421,23 +378,10 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 				if (this.notes[pID].valid) {
 					this.rootFolder.checkNote(pID, pContext);
-					/*
-					let vTargetFolder = this.rootFolder;
-					
-					if (pContext.targetFolderID) {
-						vTargetFolder = this.rootFolder.folder[pContext.targetFolderID] || this.rootFolder;
-					}
-					
-					if (vTargetFolder) {
-						vTargetFolder.addNote(this.notes[pID].id);//appendChild(vElement);
-					}
-					*/
 				}
 				else {
 					delete this.notes[pID];
 				}
-
-				//this.sortEntries();
 				this.rebuildTickList();
 			}
 		}
@@ -470,50 +414,6 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			}
 		}
 	}
-
-	/*
-	onEntriesdrop(pEvent) {
-		let vDropData = pEvent.dataTransfer.getData("text/plain") ? JSON.parse(pEvent.dataTransfer.getData("text/plain")) : undefined;
-		
-		if (vDropData?.isNote) {
-			let vElements = this.entries.childNodes;
-			
-			let i = 0;
-			
-			let vBeforeCenter = false;
-			
-			while (i < vElements.length && !vBeforeCenter) {
-				let vRectangle =  vElements[i].getBoundingClientRect();
-				
-				let vMiddle = vRectangle.top + vRectangle.height/2;
-				vBeforeCenter = pEvent.pageY < vMiddle;
-				
-				if (!vBeforeCenter) {
-					i = i+1;
-				}
-			}
-			
-			if (i < vElements.length) {
-				let vBeforeID = vElements[i].id;
-				
-				if (vBeforeID != vDropData.id) {
-					this.sortBefore(vDropData.id, vBeforeID);
-				}
-			}
-			else {
-				this.sortatEnd(vDropData.id);
-			}	
-		}
-	}
-		
-	onUnsortedDrop(pEvent) {
-		let vDropData = pEvent.dataTransfer.getData("text/plain") ? JSON.parse(pEvent.dataTransfer.getData("text/plain")) : undefined;
-		
-		if (vDropData?.isNote) {
-			
-		}
-	}
-	*/
 
 	onJournaldrop(pJournalID, pNoteID) {
 		if (pJournalID && pNoteID) {
@@ -565,55 +465,6 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			this.hasTick = false;
 		}
 	}
-
-	/*
-	sortBefore(pInsertID, pBeforeID) {
-		let vSortorder = this.sortorder.order;
-		
-		let vElement = this.notes[pInsertID].element;
-		let vBeforeElement = this.notes[pBeforeID].element;
-		
-		if (vElement && vBeforeElement) {
-			let vNewSortorder = vSortorder.filter(vID => vID != pInsertID);
-			
-			let vSortIndex = vNewSortorder.indexOf(pBeforeID);
-			
-			vNewSortorder = [...vNewSortorder.slice(0, vSortIndex), pInsertID, ...vNewSortorder.slice(vSortIndex, vNewSortorder.length)];
-			
-			vBeforeElement.before(vElement);
-		
-			this.sortorder = {order : vNewSortorder};
-		}
-	}
-		
-	sortatStart(pInsertID) {
-		let vSortorder = this.sortorder.order;
-		
-		let vElement = this.notes[pInsertID].element;
-		
-		if (vElement) {
-			vSortorder.unshift(pInsertID);
-			
-			this.entries.prepend(vElement);
-			
-			this.sortorder = {order : vSortorder};
-		}
-	}
-		
-	sortatEnd(pInsertID) {
-		let vSortorder = this.sortorder.order;
-		
-		let vElement = this.notes[pInsertID].element;
-		
-		if (vElement) {
-			vSortorder.push(pInsertID);
-			
-			this.entries.appendChild(vElement);
-			
-			this.sortorder = {order : vSortorder};
-		}
-	}
-	*/
 
 	filterEntries(pFilter) {
 		this.rootFolder.applyFilter(pFilter);

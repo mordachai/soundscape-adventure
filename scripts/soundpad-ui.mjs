@@ -47,11 +47,6 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
      */
     async _prepareContext(options) {
         const canModify = game.user.isGM || game.user.hasRole("ASSISTANT");
-        let config_category = game.settings.get('soundscape-adventure', "configCategory");
-        if (!config_category) {
-            ui.notifications.warn("No soundpad UI category configured. Using all sounds without category.");
-            config_category = "";
-        }
         const soundscapes = SoundscapeAdventure.soundscapes;
         let name = "";
         let sounds = [];
@@ -60,12 +55,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
             if (soundscape.class.isPlaying) {
                 const mood = soundscape.class.moods[soundscape.class.activeMoodId];
                 if(mood) {
-                    const category = config_category === "" ? {id: ""} : mood.categories.find(c => c.name === config_category);
-                    if (!category) {
-                        sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
-                    } else {
-                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD && sound.category === category.id);
-                    }
+                    sounds = mood.sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPADUI);
                     name = mood.name;
                     this.soundscape = soundscape.class;
                 }
@@ -96,11 +86,18 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                 const sound = context.sounds[idx];
                 const playlist = this.soundscape.playlist;
                 const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
-                const icon = btn.querySelector('i')
+                await playlistSound.load();
+                const icon = btn.querySelector('i');
+                if (!playlistSound) {
+                    utils.log(utils.getCallerInfo(),`Sound not found in the playlist ${this.soundscape.playlist.name}: ${sound.path}`, constants.LOGLEVEL.WARN);
+                    return;
+                }
                 if (sound && !playlistSound.playing) {
                     // before playing, make sure it isn't configured as a loop sound
                     await this.soundscape.playSound(sound, this.soundscape.activeMoodId);
-                    event.currentTarget.style.backgroundColor = "#c9593f";
+                    btn.style.backgroundColor = "#c9593f";
+                    const icon = btn.querySelector("i");
+                    //icon.style.color = "#c9593f";
 
                     //icon.classList.toggle('fa-play', !playlistSound.playing);
                     icon.className = "fas fa-stop";
@@ -109,6 +106,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                             'end',
                             (event) => {
                                 btn.style.backgroundColor = "";
+                                icon.style.color = "";
                                 icon.className = "fas fa-play";
                                 btn.style.opacity = 0.5;
                             }
@@ -117,6 +115,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                             'stop',
                             (event) => {
                                 btn.style.backgroundColor = "";
+                                icon.style.color = "";
                                 icon.className = "fas fa-play";
                                 btn.style.opacity = 0.5;
                             }
@@ -124,7 +123,6 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                     }, 100);
 
                 } else if (sound && playlistSound.playing) {
-                    console.warn("Stopping sound:", sound);
                     await this.soundscape.stopSound(sound, this.soundscape.activeMoodId);
                     btn.style.backgroundColor = "";
                     icon.className = "fas fa-play";
@@ -141,7 +139,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
 
                 // Remove any existing sliders first
                 //soundselected
-                const currentBar = this.element.querySelector('.soundpad-volume-slider');
+                const currentBar = this.element.querySelector('.soundpad-volume2-slider');
                 currentBar.style.display = 'flex';
                 //currentBar.querySelector('.soundpad-volume-label').textContent = playlistSound.name;
                 // Remove any existing slider

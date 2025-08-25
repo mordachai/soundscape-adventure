@@ -45,6 +45,10 @@ export default class MoodConfig {
         this.active_groups = moodConfig.active_groups ? moodConfig.active_groups : [];
         this.sounds = [];
         this.categories = moodConfig?.categories ? moodConfig.categories : [];
+        const soundpadui = this.categories.filter(el => el.type == constants.SOUNDTYPE.SOUNDPADUI);
+        if (soundpadui.length == 0) {
+            this.categories.push({ id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] })
+        }
         //this.groups = moodConfig?.groups ? moodConfig.groups : [];
         const _sounds = moodConfig.sounds.slice();
         for (let i = 0; i < _sounds.length; i++) {
@@ -97,7 +101,7 @@ export default class MoodConfig {
 
         // Create delete control for Peaceful Day
         const moodRenderDeleteControl = document.createElement('a');
-        moodRenderDeleteControl.className = 'mood-control fa-solid fa-trash';
+        moodRenderDeleteControl.className = 'soundscape-tab-button mood-control fa-solid fa-trash';
         moodRenderDeleteControl.dataset.action = 'deleteMood';
         moodRenderDeleteControl.dataset.tooltip = 'Delete Mood';
         moodRenderDeleteControl.dataset.soundscapeId = id;
@@ -106,9 +110,9 @@ export default class MoodConfig {
         // Create play control for Peaceful Day
         const moodRenderPlayControl = document.createElement('a');
         if (this.status == "playing") {
-            moodRenderPlayControl.className = 'mood-control fas fa-stop item-active';
+            moodRenderPlayControl.className = 'soundscape-tab-button mood-control fas fa-stop item-active';
         } else {
-            moodRenderPlayControl.className = 'mood-control fas fa-play';
+            moodRenderPlayControl.className = 'soundscape-tab-button mood-control fas fa-play';
         }
         moodRenderPlayControl.dataset.action = 'playStopMood';
         moodRenderPlayControl.dataset.tooltip = 'Play Mood';
@@ -150,7 +154,7 @@ export default class MoodConfig {
                 } else {
                     // Only load if the file was found
                     this.sounds[i].id = await this.registerSound(this.sounds[i], playlist);
-                    console.log("Had to register a new audio", this.sounds[i].path)
+                    utils.log(utils.getCallerInfo(),`Had to register a new audio: ${this.sounds[i].path}`, constants.LOGLEVEL.INFO);
                 }
             } else {
                 this.sounds[i].id = playlistsound.id;

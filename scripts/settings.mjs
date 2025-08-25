@@ -19,14 +19,14 @@ Hooks.once('init', () => {
       default: "", // The default value of the setting
     });
 
-    game.settings.register('soundscape-adventure', 'token-server', {
-      name: "Token required to authenticate to the server",
-      hint: "Token required to authenticate to the server",
-      scope: 'world',     // This specifies that the setting is stored at the world level
-      config: true,       // This specifies that the setting should appear in the settings configuration UI
-      type: String,       // The type of data that is stored (String, Number, Boolean, etc.)
-      default: "", // The default value of the setting
-    });
+    // game.settings.register('soundscape-adventure', 'token-server', {
+    //   name: "Token required to authenticate to the server",
+    //   hint: "Token required to authenticate to the server",
+    //   scope: 'world',     // This specifies that the setting is stored at the world level
+    //   config: true,       // This specifies that the setting should appear in the settings configuration UI
+    //   type: String,       // The type of data that is stored (String, Number, Boolean, etc.)
+    //   default: "", // The default value of the setting
+    // });
 
     game.settings.register('soundscape-adventure', 'enable-logs', {
       name: "Enable module logs",
@@ -68,13 +68,13 @@ Hooks.once('init', () => {
       type: Object
     });
 
-    game.settings.register('soundscape-adventure', "configCategory", {
-      name: "Soundpad UI Category",
-      hint: "The category of soundpad sounds to use in the UI.",
-      scope: "world",
-      config: true,
-      type: String,
-  });
+  //   game.settings.register('soundscape-adventure', "configCategory", {
+  //     name: "Soundpad UI Category",
+  //     hint: "The category of soundpad sounds to use in the UI.",
+  //     scope: "world",
+  //     config: true,
+  //     type: String,
+  // });
 });
 
   
@@ -82,11 +82,11 @@ Hooks.once('init', () => {
     const version = game.settings.get('soundscape-adventure', "newsDialog");
     if (version != constants.MODULE.version) {
       const templatePath = "/modules/soundscape-adventure/templates/news.html";
-      const html_content = await renderTemplate(templatePath, {});
+      const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, {});
       
       let dialog = new foundry.applications.api.DialogV2({
         window: { title: "Soundscape Adventure NEWS", classes: ["my-package"] },
-        size: { width: 600, height: 100 },
+        position: { width: 800, height: 600 },
         content: html_content,
         buttons: [{
             action: "choice",
@@ -97,8 +97,9 @@ Hooks.once('init', () => {
         }]
       });
       await dialog.render(true);
-      console.warn(dialog)
-      dialog.classList.add("my-custom-dialog");
+      dialog.classList.add("my-package-news");
+      const content = dialog.element.querySelector(".window-content");
+      content.style.overflowY = "scroll";
     }
   }
 

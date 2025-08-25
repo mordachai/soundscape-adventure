@@ -19,9 +19,15 @@ Hooks.on('deleteCombat', (combat, updateData) => {
 
 
 
+
 /**
  * MODULE HOOKS
  */
+
+Hooks.on('SoundscapeAdventure-Init', (sidebar, html) => {
+     game.soundscapeAdventure = SoundscapeAdventure;
+      Hooks.call("SoundscapeAdventure-Ready");
+});
 Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
     ui.sidebar.parts[cModuleName].render(true);
     coreInit();
@@ -337,6 +343,18 @@ Hooks.once('init', () => {
         return parseInt(volume * 100) + "%";
     })
 
+    Handlebars.registerHelper('volumeIcon', function (volume) {
+        const size = parseInt(volume * 100);
+        if (size == 0) {
+            return "fas fa-volume-xmark volume-icon";
+        } else if (size < 50) {
+            return "fas fa-volume-low volume-icon";
+        } else if (size < 80) {
+            return "fas fa-volume volume-icon";
+        }
+        return "fas fa-volume-high volume-icon";
+    })
+
     Handlebars.registerHelper('shortenString', function (str) {
         let decodedFileName = decodeURIComponent(str);
         let fileNameWithoutExtension = decodedFileName.replace(/\.[^/.]+$/, "");
@@ -477,6 +495,7 @@ Hooks.once('ready', async () => {
     await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
     utils.log(utils.getCallerInfo(), `Saving soundscapes ${validSoundscapes.join(";")}`, constants.LOGLEVEL.INFO);
     Hooks.call("SoundscapeAdventure-UpdateSidebar");
+    Hooks.call("SoundscapeAdventure-Init");
 
 });
 
@@ -508,7 +527,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
         button: true,
         //toggle: false, // one-time click
         visible: true, // or () => true
-        onChange: async (e,x) => {
+        onChange: async (e, x) => {
             //ui.notifications.info("Token tool clicked!");
             if (game.soundscapeAdventure.soundpadUI) {
                 await game.soundscapeAdventure.soundpadUI.render(true);
@@ -531,7 +550,7 @@ Hooks.on("SoundscapeAdventure-Soundpad-Render", async () => {
 
 Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {
     ui.sidebar.parts[cModuleName].render(true);
-    if (SoundscapeAdventure.soundscapes[soundscapeId].openUI)
+    if (SoundscapeAdventure.soundscapes[soundscapeId]?.openUI)
         SoundscapeAdventure.soundscapes[soundscapeId].openUI.render(true);
 
 

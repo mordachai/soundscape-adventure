@@ -15,10 +15,11 @@ const SOUNDTYPE = {
     AMBIENCE: 0,
     LOOP: 1,
     RANDOM: 2,
-    SOUNDPAD: 3,
+    SOUNDPAD: 3, // LIBRARY
     GROUP_LOOP: 4,
     GROUP_RANDOM: 5,
     GROUP_SOUNDPAD: 6,
+    SOUNDPADUI: 7,
     INVALID: -1
 
 }
