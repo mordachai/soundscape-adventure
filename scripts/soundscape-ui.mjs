@@ -1059,7 +1059,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }
         await this.soundscape.class.saveExtas(moodId, soundId, new_interval, new_fade, playOnce);
 
-        if (elements.soundName)
+        if (elements?.soundName)
             await this.soundscape.class.updateSoundName(soundId, elements.soundName.value);
         await this.soundscape.class.saveTrigger(moodId, soundId, triggers);
         if (elements?.soundIcon?.value) {

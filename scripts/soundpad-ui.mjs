@@ -97,7 +97,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                     await this.soundscape.playSound(sound, this.soundscape.activeMoodId);
                     btn.style.backgroundColor = "#c9593f";
                     const icon = btn.querySelector("i");
-                    icon.style.color = "#c9593f";
+                    //icon.style.color = "#c9593f";
 
                     //icon.classList.toggle('fa-play', !playlistSound.playing);
                     icon.className = "fas fa-stop";

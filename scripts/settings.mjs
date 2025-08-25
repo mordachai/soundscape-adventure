@@ -19,14 +19,14 @@ Hooks.once('init', () => {
       default: "", // The default value of the setting
     });
 
-    game.settings.register('soundscape-adventure', 'token-server', {
-      name: "Token required to authenticate to the server",
-      hint: "Token required to authenticate to the server",
-      scope: 'world',     // This specifies that the setting is stored at the world level
-      config: true,       // This specifies that the setting should appear in the settings configuration UI
-      type: String,       // The type of data that is stored (String, Number, Boolean, etc.)
-      default: "", // The default value of the setting
-    });
+    // game.settings.register('soundscape-adventure', 'token-server', {
+    //   name: "Token required to authenticate to the server",
+    //   hint: "Token required to authenticate to the server",
+    //   scope: 'world',     // This specifies that the setting is stored at the world level
+    //   config: true,       // This specifies that the setting should appear in the settings configuration UI
+    //   type: String,       // The type of data that is stored (String, Number, Boolean, etc.)
+    //   default: "", // The default value of the setting
+    // });
 
     game.settings.register('soundscape-adventure', 'enable-logs', {
       name: "Enable module logs",
@@ -68,13 +68,13 @@ Hooks.once('init', () => {
       type: Object
     });
 
-    game.settings.register('soundscape-adventure', "configCategory", {
-      name: "Soundpad UI Category",
-      hint: "The category of soundpad sounds to use in the UI.",
-      scope: "world",
-      config: true,
-      type: String,
-  });
+  //   game.settings.register('soundscape-adventure', "configCategory", {
+  //     name: "Soundpad UI Category",
+  //     hint: "The category of soundpad sounds to use in the UI.",
+  //     scope: "world",
+  //     config: true,
+  //     type: String,
+  // });
 });
 
   

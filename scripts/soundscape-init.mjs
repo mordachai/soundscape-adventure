@@ -550,7 +550,7 @@ Hooks.on("SoundscapeAdventure-Soundpad-Render", async () => {
 
 Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {
     ui.sidebar.parts[cModuleName].render(true);
-    if (SoundscapeAdventure.soundscapes[soundscapeId].openUI)
+    if (SoundscapeAdventure.soundscapes[soundscapeId]?.openUI)
         SoundscapeAdventure.soundscapes[soundscapeId].openUI.render(true);
 
 

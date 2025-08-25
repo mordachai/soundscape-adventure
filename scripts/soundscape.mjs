@@ -24,6 +24,7 @@ export default class Soundscape {
     version = 2;
     visible_off_sounds = false;
     activeMoodId = "";
+    openUI = null;
     //the id of the mood is been displayed on the UI
     currentMoodOnUI = "";
 
