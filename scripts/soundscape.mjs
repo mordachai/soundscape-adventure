@@ -74,7 +74,6 @@ export default class Soundscape {
             } else {
                 
                 this.playlistId = this.playlist.id;
-                await this.saveMoodsConfig();
             }
         }
 
@@ -121,7 +120,6 @@ export default class Soundscape {
 
         this.playlist = await Playlist.create(playlistData);
         this.playlistId = this.playlist.id;
-        this.saveMoodsConfig();
     }
 
     async save_soundboard() {
