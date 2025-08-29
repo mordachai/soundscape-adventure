@@ -1235,4 +1235,27 @@ export default class Soundscape {
             ui.notifications.warn(`Mood ${moodName} not found in Soundscape ${this.name}`);
         }
     }
+    // read all ogg, mp3, wav files from a folder and add them to a list of paths to include in the playlist
+    async addSoundsToPlaylist(folderPath, loadSubfolders) {
+        console.log("Adding sounds from folder", folderPath, "Subfolders:", loadSubfolders);
+        const paths = [];
+        const browseOptions = { recursive: loadSubfolders };
+        const filePickerResult = await foundry.applications.apps.FilePicker.browse('data', folderPath, browseOptions);
+
+        const soundFileRegex = /\.(mp3|ogg|wav)$/i;
+        for (const file of filePickerResult.files) {
+            console.log("Found file:", file);
+            if (soundFileRegex.test(file)) {
+                paths.push(file);
+            }
+        }    
+        if (paths.length > 0)
+            await this.playlist.bulkImportSounds(paths);
+        const dirs = filePickerResult.dirs;
+        if (loadSubfolders && dirs.length > 0) {
+            for (const dir of dirs) {
+                const subfolderPaths = await this.addSoundsToPlaylist(dir, loadSubfolders);
+            }
+        }
+    }
 }

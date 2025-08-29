@@ -93,9 +93,20 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			hint: "Select a file name without extension"
 		});
 
+		const checkInput = fields.createCheckboxInput({
+			name: "loadSubfolders",
+			checked: false
+		});
+		const checkGroup = fields.createFormGroup({
+			input: checkInput,
+			label: "Load sounds in subfolders",
+			hint: "Mark this option if you want to load sounds in subfolders (may take longer)",
+		});
+
 		// Create content container
 		const content = document.createElement("div");
 		content.appendChild(textGroup);
+		content.appendChild(checkGroup);
 		inputElement = content.querySelector("input[name='fileName']");
 		return foundry.applications.api.DialogV2.prompt({
 			window: { title: "Select a file name" },
@@ -188,9 +199,12 @@ class SoundscapeTab /*extends SidebarTab*/ {
 				if (!folderPath) return ui.notifications.warn("No folder selected.");
 
 				// Step 2: Ask for filename
-				const fileName = (await this.promptFileName())?.fileName;
+				const dialogResponse = (await this.promptFileName()); //?.fileName;
+				const fileName = dialogResponse?.fileName;
+				const loadSubfolders = dialogResponse?.loadSubfolders || false;
+				utils.log(utils.getCallerInfo(), `Load sounds in subfolders: ${loadSubfolders}`, constants.LOGLEVEL.INFO);
 				if (!fileName) return ui.notifications.warn("Filename is required.");
-
+				ui.notifications.info("Creating soundscape...");
 				// Step 3: Create your data
 				const exampleData = {
 					name: fileName,
@@ -209,10 +223,11 @@ class SoundscapeTab /*extends SidebarTab*/ {
 				const soundscapes = current_soundscapes ? `${current_soundscapes};${folderPath}/${fileName}.json` : `${folderPath}/${fileName}.json`;
 				await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes);
 				utils.log(utils.getCallerInfo(), `Saving soundscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
-				await SoundscapeAdventure.loadSoundscape(`${folderPath}/${fileName}.json`);
+				await SoundscapeAdventure.loadSoundscape(`${folderPath}/${fileName}.json`, true, folderPath, loadSubfolders);
 
 				// Step 6: RELOAD Tab
 				this.render(true);
+				ui.notifications.info("Soundscape created and loaded!");
 				// 
 			});
 

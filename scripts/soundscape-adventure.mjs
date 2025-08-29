@@ -22,7 +22,7 @@ class SoundscapeAdventure {
     async init() {
     }
 
-    async loadSoundscape(path_To_file) {
+    async loadSoundscape(path_To_file,havesounds=false, folderPath="", loadSubfolders=false) {
         utils.log(utils.getCallerInfo(), `Loading soundscape from ${path_To_file}`, constants.LOGLEVEL.INFO);
         const sb = new Soundscape(path_To_file);
         await sb.init();
@@ -38,6 +38,9 @@ class SoundscapeAdventure {
         }
         game.settings.set('soundscape-adventure','soundscapes', soundscapes);
         utils.log(utils.getCallerInfo(), `Saving soudscapes ${soundscapes}`, constants.LOGLEVEL.INFO);
+        if (havesounds) {
+            await sb.addSoundsToPlaylist(folderPath, loadSubfolders);
+        }
         return true
     }
 
