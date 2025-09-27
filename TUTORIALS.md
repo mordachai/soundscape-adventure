@@ -1,100 +1,141 @@
 # Tutorials
-Below are the s ections explaing how to use the Soundscape Adventure. The videos in the secions are short videos demonstrating how to use/configure the soundscapes.
-
-All the explanations below are referent to the Soundscape Adventure for FoundryVTT V13. For the V12 please see these [Tutotials](TUTORIAL.md)
+Tutorials for Soundscape Adventure (FoundryVTT V13). For V12 see [Tutorials](TUTORIAL.md).
 
 ## Creating a Soundscape
-When creating a new soundscape you have the option to load the sounds within a folder and its subfolders. After create a soundscape, a new json file with same name is created in the folder you selected. Also there will be a playlist named with same name of the Soundscape with the prefix "Soundscape:". That means if you create a soundscape named "Forest" a playlist will be created with the name "Soundscape: Forest". You don't need to interact direct to the playlist, hat is the way the soundscape uses to keep all sounds for the soundscape loaded in foundryvtt.
+To create a new soundscape you need to select a folder to save a JSON file containing the configuration of the soundscape. During the creation you can select to load the sounds from the folder and its subfolders. After creating the soundscape, a new playlist with the name "Soundscape: [Soundscape Name]" will be created automatically.
 
-<video src="videos/Create-Soundscape.mp4"  controls></video>
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/I8eFlDHm9iY" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Loading a Soundscape
+To load a soundscape you need to find the JSON file that contains the soundscape configuration. Keep in mind that FoundryVTT needs access to the sound files in the JSON to be able to load those into the playlist.
+
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/Qg5GuvArrmk" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Creating a Mood
-When creating a mood we need to type its name. Every mood has three sounds types explained in the next section. By default the mood is created with with a category None for each sound type. The available sounds can be found in the library.
-<video src="videos/Create-Mood.mp4"  controls></video>
+To create a mood you need to type the mood name and save it. Each mood has three sound types with default "None" categories. All sounds added to the soundscape are available in the library.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/3YWAHSqRCLc" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Sound Types
-- Library: Sounds available to use in the soundscape. These sounds are the same sounds in the playlist.
-- Loop: Sounds that after start playing it keeps playing until the mood stops.
-- Random: Sounds that play randomly based on its configuration.
-- Soundscape: Sounds to play once. Thse sounds are also available in the soundpad UI
+- **Library**: Available sounds from the playlist
+- **Loop**: Continuous sounds until mood stops
+- **Random**: Randomly triggered sounds
+- **Soundpad**: One-time sounds (also available in the Soundpad UI)
 
 ## Moving Sounds
-You can drag and drop sounds from the Library to any category type, from types and categories, and back to the library.
-
-<video src="videos/Move-Sounds.mp4"  controls></video>
+Drag and drop sounds between Library, categories, and sound types.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/8s4P6P7lq8A" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Preview Sound
-You can play the sounds in the Library to listen to the sound before move it.
-<video src="videos/Preview-Sound.mp4"  controls></video>
+Preview sounds in Library before moving them.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/Rj6he5EK3O0"
+        frameborder="0" allowfullscreen>
+</iframe>
+
 
 ## General Sound Configurations
-Configure sounds involves defining its ovlume, its state (enable or disable) and other parameters in the sound settings.
-
-### Basic Options
-The basic configuration for sounds are: Set the volume, define if the sound is enabled or disabled for that mood. All basic configuration applied to a sound is defined for that mood and it doesn't replicate to other moods.
-<video src="videos/Sound-Configuration-Basic.mp4"  controls></video>
+Configure volume, enable/disable state, and other parameters. Settings are mood-specific. If you configure a sound in a mood, these configurations won't be replicated to other moods.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/YbfW36YJQVQ"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ### Config Options for type Loop sounds (Sound settings)
-In the Sound Settings you can configure the sound name, triggers for that  sound, you can define a group (Group configuration will be showed in a section below), and other options.
-
-Each configuration is exclusive to the mood, excluding the name of the sound. When changing a name of a sound in a mood, it will be reflected not only for that mood but for all moods in the soundscape.
-<video src="videos/Sound-Configuration-Loop.mp4"  controls></video>
+Configuring the sound name applies to all moods. Other configurations like triggers, groups, and other options do not.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/QHsMczDRcqQ"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ### Config Options for type Random sounds (Sound settings)
-Random sounds have some different configurations. You must configure the random interval the sound needs to play.
-
-<video src="videos/Sound-Configuration-Random.mp4"  controls></video>
+Configure random playback intervals.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/ZsQhAT4GZeg"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Adding new sounds to the soundscape
-To add a new sound to the soundscape you need to add the sound to the playlist relatead to the soundscape. 
-<video src="videos/Add-New-Sound.mp4"  controls></video>
+Add sounds to the related playlist. 
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/VZ1QRBWfWoQ"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Categories
-Sound categories are useful when you have many sounds of same type and you want to organize them. There is no silver bullet for categories, it all depends on how you want to organize the sounds. Categories have three commands to enable all sounds in the category, play all sounds enabled on that category, stop all sounds enabled in that category.
+Organize sounds by categories. Each category has the commands: enable all sounds, play all enabled sounds, stop all enabled sounds. These commands help to interact with all sounds in the category.
 
-Categories with same names in different types are considered the related categories. For example, if there is a category named "Rain" in the type loop and anohter category with same name in the type random, when you click on play or stop all enabled sounds for the category "Rain"in the type loop, the enabled sounds within the Rain category otherwise will enable only sounds in one specific category despite both having same name.
-
-This is useful when you want, for example, simulate a weather condition, or another specific situation in a scene that you want to play at same time multitple sounds from loop and random types.
+Same-named categories across types are linked (e.g., if you have "Rain" in Loop and "Rain" in Random, when you click on the play button for the Rain category in Loop, the enabled sounds in the Rain category from Random will also be played). This behavior doesn't apply when enabling all sounds in a category. This is useful for weather or scene situations.
 
 ### Creating Category
-<video src="videos/Create-Category.mp4"  controls></video>
+You can create multiple categories to organize the sounds, or just to group sounds you want to control.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/QCy69Ps59IY" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ### Category Commands
-<video src="videos/Category-Commands.mp4"  controls></video>
+The category commands help you interact with the sounds in the category and coordinate playing sounds across types.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/YayGXFskgcI"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Loop sounds
-Loop sounds are continuosly playing when the mood is on.
+Continuous playback when mood is active.
 
-### Loop Sound Group
-When grouping loop sounds, a new control will be available. The intensity control allows to change the loop sound to give an intensity impresion. To make it corretly you need to name the sounds with same name an in order, for example rain1 to rain5. This way the intensity closest to 0 will play the lowest value and closer to 100% will play the rain5.
-
-Intensities can be useful to increase the intensity of a rain to a storm or in a scene when something is getting close.
-<video src="videos/Loop-Sound-Group.mp4"  controls></video>
+### Loop Sound Groups
+Grouped sounds get intensity control (0-100%). Name sounds sequentially (rain1, rain2, etc.). Lower intensity = lower numbered sound.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/GbwM0BfMQFY"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Random Sounds
-Random sounds can be played in an interval multiple times or only once. When grouping random sounds the soundscape will play one of the sounds in the group, and in hte next execution will execute another sound without repeating the previous one.
-### Random Sound Group
-<video src="videos/Random-Sound-Group.mp4"  controls></video>
+Play at intervals (multiple times or once). Groups cycle through sounds without repeating.
+
+### Random Sound Groups
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/cfIsCf8nMNo" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Soundpad Sounds
-Soundpad sounds allow the GM to play sounds quicker during a scene. There is a dedicated UI for the Soundpad sounds that GM can even add some images to the sounds to identify each one.
-<video src="videos/Soundpad-Sounds.mp4"  controls></video>
-
+Quick-access sounds for GMs with dedicated UI. Add images for identification.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/CKvNwOUZbQ8" 
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ## Triggers
-There are many triggers that can be configured to start or stop a mood or sounds within a mood. Below examples on how to start/stop moods when activating a scene, triggering some actions related to a region, or when start/stop a combat.
-
-There are other fine tunning options configuring specific sounds but these 3 examples below might cover 99% of the common usage of the soundscape.
+Configure triggers to start/stop moods or sounds. Three main types cover most use cases:
 
 ### Scenes
-You can configure a mood to start playing when a scene is activated. When a mood starts, if any other mood playing before will be stopped.
+Auto-start moods when scenes activate. Previous moods stop automatically.
 
-<video src="videos/Trigger-Scene.mp4"  controls></video>
+
 
 ### Regions
-<video src="videos/Trigger-Region.mp4"  controls></video>
+You can trigger moods with region triggers.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/iIaTGryyW_Y"
+        frameborder="0" allowfullscreen>
+</iframe>
 
 ### Combat
-<video src="videos/Trigger-Combat.mp4"  controls></video>
+When combat starts or stops you can play or stop moods.
+<iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/UIntmpJn4l4"
+        frameborder="0" allowfullscreen>
+</iframe>
