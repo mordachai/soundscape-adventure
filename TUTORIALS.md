@@ -13,6 +13,7 @@ To load a soundscape you need to find the JSON file that contains the soundscape
 
 ## Creating a Mood
 To create a mood you need to type the mood name and save it. Each mood has three sound types with default "None" categories. All sounds added to the soundscape are available in the library.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/3YWAHSqRCLc)
 
 ## Sound Types
@@ -23,27 +24,33 @@ To create a mood you need to type the mood name and save it. Each mood has three
 
 ## Moving Sounds
 Drag and drop sounds between Library, categories, and sound types.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/8s4P6P7lq8A)
 
 ## Preview Sound
 Preview sounds in Library before moving them.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/Rj6he5EK3O0)
 
 
 ## General Sound Configurations
 Configure volume, enable/disable state, and other parameters. Settings are mood-specific. If you configure a sound in a mood, these configurations won't be replicated to other moods.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/YbfW36YJQVQ)
 
 ### Config Options for type Loop sounds (Sound settings)
 Configuring the sound name applies to all moods. Other configurations like triggers, groups, and other options do not.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/QHsMczDRcqQ)
 
 ### Config Options for type Random sounds (Sound settings)
 Configure random playback intervals.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/ZsQhAT4GZeg)
 
 ## Adding new sounds to the soundscape
 Add sounds to the related playlist. 
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/VZ1QRBWfWoQ)
 
 ## Categories
@@ -53,10 +60,12 @@ Same-named categories across types are linked (e.g., if you have "Rain" in Loop 
 
 ### Creating Category
 You can create multiple categories to organize the sounds, or just to group sounds you want to control.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/QCy69Ps59IY)
 
 ### Category Commands
 The category commands help you interact with the sounds in the category and coordinate playing sounds across types.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/YayGXFskgcI)
 
 ## Loop sounds
@@ -64,16 +73,19 @@ Continuous playback when mood is active.
 
 ### Loop Sound Groups
 Grouped sounds get intensity control (0-100%). Name sounds sequentially (rain1, rain2, etc.). Lower intensity = lower numbered sound.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/GbwM0BfMQFY)
 
 ## Random Sounds
 Play at intervals (multiple times or once). Groups cycle through sounds without repeating.
 
 ### Random Sound Groups
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/cfIsCf8nMNo)
 
 ## Soundpad Sounds
 Quick-access sounds for GMs with dedicated UI. Add images for identification.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/CKvNwOUZbQ8)
 
 ## Triggers
@@ -86,8 +98,10 @@ Auto-start moods when scenes activate. Previous moods stop automatically.
 
 ### Regions
 You can trigger moods with region triggers.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/iIaTGryyW_Y)
 
 ### Combat
 When combat starts or stops you can play or stop moods.
+
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/UIntmpJn4l4)
