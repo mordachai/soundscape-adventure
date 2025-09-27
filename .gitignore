@@ -138,4 +138,5 @@ dist
 
 # Local env files
 *.md
+!TUTORIALS.md
 !README.md
