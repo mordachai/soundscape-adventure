@@ -15,14 +15,15 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         // header: { template: '' },
         // tabs: { template: '' },
         // description: { template: '' },
-        foo: { template: 'modules/soundscape-adventure/templates/soundscape.hbs' },
+        foo: { template: 'modules/soundscape-adventure/templates/soundscape/main.hbs' },
         // bar: { template: '' },
     }
 
     static DEFAULT_OPTIONS = {
         id: "soundscape-ui",
         window: {
-            title: "Soundscape",
+            title: "Soundscape Adventure: ",
+            icon: "fas fa-volume-up"
         },
         classes: ["soundscape-ui"],
         actions: {
@@ -30,6 +31,13 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             viewMood: SoundscapeUI.viewMood,
         },
         dragDrop: [{ dragSelector: '[data-drag]', dropSelector: null }],
+        position: {
+            width: 1024,
+            height: 920
+        },
+        window: {
+            resizable: true
+        },
     }
 
 
@@ -45,7 +53,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
     // }
 
     constructor(soundscape) {
-        super({ window: { title: `${soundscape.name}` } });
+        super({ window: { title: `Soundscape Adventure: ${soundscape.name}`, icon: "fas fa-speaker" } });
         this.soundscape = soundscape;
         this.#dragDrop = this.#createDragDropHandlers();
     }
@@ -149,24 +157,17 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     async myRender(force = false, options = {}) {
         if (this.element) {
-            const content = await this.element.querySelector('.mood-active');
+            const content = await this.element.querySelector('.sa-content');
             this.scrollTop = content?.scrollTop ?? 0;
         }
 
         await super.render(force, options);
-        //
-    }
-
-    async test(options) {
-
-    }
-
-    async viewMood(options) {
-        alert("dasdsad")
+        const content = await this.element.querySelector('.sa-content');
+        content.scrollTop = this.scrollTop;
     }
 
     _onDragStart(event) {
-        const div = event.target;
+        const div = event.target.closest(".sa-dataset");
         const dragData = {
             type: "sound",
             soundId: div.dataset?.soundId,
@@ -185,7 +186,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         const dropZone = event.target.closest('.drop-zone');
         if (dropZone.dataset.dropZoneType) {
             const data = JSON.parse(event.dataTransfer.getData("text/plain"));
-            this.soundscape.class.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
+            this.soundscape.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
+            this.soundscape.markMoodAsChanged(data.moodId);
         }
         this.myRender(true);
     }
@@ -239,14 +241,14 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
 
         // FILTER
-        this.element.querySelectorAll('.soundscape-sliding-panel-content').forEach(container => {
+        this.element.querySelectorAll('.sa-library').forEach(container => {
             const input = container.querySelector('.filterInput');
             input.value = this.current_input;
-            const items = container.querySelectorAll('.library-sound-item');
+            const items = container.querySelectorAll('.sa-library-item');
 
             if (this.current_input) {
                 items.forEach(item => {
-                    const title = item.querySelector('.library-sound-name')?.dataset?.fullName.toLowerCase() || '';
+                    const title = item.querySelector('.sa-sound-name')?.dataset?.fullName.toLowerCase() || '';
                     item.style.display = title.includes(this.current_input) ? '' : 'none';
                 });
             }
@@ -254,11 +256,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             input.addEventListener('input', () => {
                 const filter = input.value.toLowerCase();
                 this.current_input = filter;
-                
-                const content = container.closest('.soundscape-sliding-panel-content');
-                const items = content.querySelectorAll('.library-sound-item');
+
+                const content = container.closest('.sa-library');
+                const items = content.querySelectorAll('.sa-library-item');
                 items.forEach(item => {
-                    const title = item.querySelector('.library-sound-name')?.dataset?.fullName.toLowerCase() || '';
+                    const title = item.querySelector('.sa-sound-name')?.dataset?.fullName.toLowerCase() || '';
                     item.style.display = title.includes(filter) ? '' : 'none';
                 });
             });
@@ -282,43 +284,35 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             button.addEventListener("click", async (event) => {
                 const action = button.dataset.action;
                 // Find the closest parent with data attributes
-                const parent = button.closest(".mood-wrapper");
+                const parent = button.closest(".sa-mood");
                 const moodId = parent?.dataset.moodId;
                 const soundscapeId = parent?.dataset.soundscapeId;
+
+                //if (!moodId || !soundscapeId) return;
 
                 // Log for debugging
                 const root = button.closest(".soundboardadv");
                 // Call appropriate method
                 switch (action) {
                     case "playStopMood":
-                        const icon = button.querySelector(".fa");
+                        const icon = button.querySelector("i");
                         icon.className = "fa fa-spinner fa-spin mood-control soundscape-tab-button";
-                        await this.soundscape.class.playStopMood(moodId);
+                        await this.soundscape.playStopMood(moodId);
                         if (this.element) {
-                            const content = await this.element.querySelector('.mood-active');
+                            const content = await this.element.querySelector('.sa-content');
                             this.scrollTop = content?.scrollTop ?? 0;
                         }
                         this.myRender(true);
                         break;
                     case "viewMood":
-                        const soundboardElements = root.querySelectorAll('div.soundboardadv-main');
-                        for (const element of soundboardElements) {
-
-                            if (element.getAttribute('data-mood-id') === moodId) {
-                                element.className = 'soundboardadv-main mood-active';
-                                this.soundscape.class.currentMoodOnUI = moodId;
-                            } else {
-                                element.className = 'soundboardadv-main';
-                            }
-                        }
-
                         const config = await game.settings.get(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI");
+                        this.currentMoodOnUI = moodId;
                         const currentMoodSOnUI = [];
                         if (Object.keys(config).length) {
                             currentMoodSOnUI.push(...(config).split(":"));
                         }
 
-                        for (const key in this.soundscape.class.moods) {
+                        for (const key in this.soundscape.moods) {
                             // includes the new mood.
                             if (currentMoodSOnUI.includes(key) && key != moodId) {
                                 currentMoodSOnUI.splice(currentMoodSOnUI.indexOf(key), 1);
@@ -328,27 +322,33 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                                 currentMoodSOnUI.push(moodId);
                             }
                         }
-                        game.settings.set(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI", (currentMoodSOnUI.filter(el => el != "true")).join(":"));
+                        await game.settings.set(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI", (currentMoodSOnUI.filter(el => el != "true")).join(":"));
                         break;
                     case "saveMood":
                         const save_btn = parent.querySelector(".fa-download");
                         save_btn.style.color = "";
-                        this.soundscape.class.saveMoodsConfig();
+                        this.soundscape.saveMoodsConfig();
                         break;
                     case "configMood":
                         this.moodEdit(moodId);
                         break;
                     case "createMood":
-                        await this.soundscape.class.dialogNewMood();
+                        await this.soundscape.dialogNewMood();
                         break;
                     case "cloneMood":
-                        await this.soundscape.class.dialogCloneMood();
+                        await this.soundscape.dialogCloneMood();
+                        break;
+                    case "showLibrary":
+                        this.libraryIsOpen = !this.libraryIsOpen;
                         break;
                     case "deleteMood":
                         if (moodId == this.currentMoodOnUI) {
                             this.currentMoodOnUI = null;
                         }
-                        await this.soundscape.class.dialogDeleteMood(moodId);
+                        const deleted = await this.soundscape.dialogDeleteMood(moodId);
+                        if (deleted && moodId == this.currentMoodOnUI) {
+                            this.currentMoodOnUI = null;
+                        }
                         break;
                     default:
 
@@ -360,78 +360,82 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         // Sound controls
         this.element.querySelectorAll(".sound-control").forEach(async (button) => {
             button.addEventListener("click", async (event) => {
-                const content = this.element.querySelector('.mood-active');
+                const content = this.element.querySelector('.sa-content');
                 this.scrollTop = content?.scrollTop ?? 0;
                 const action = button.dataset.action;
-                const soundId = button.dataset.soundId;
                 // Find the closest parent with data attributes
-                const parent = button.closest(".soundboardadv-main");
-
-                const moodId = button.dataset.moodId;
+                const parent = button.closest(".sa-dataset");
+                const moodId = parent.dataset.moodId;
                 const soundscapeId = parent?.dataset.soundscapeId;
-                const group = button.dataset?.group;
+                const group = parent.dataset?.group;
+                const soundId = parent?.dataset.soundId;
+                const soundType = parent?.dataset.soundType;
+                if (!moodId || !soundId || !action) return;
                 // Log for debugging
                 const root = button.closest(".soundboardadv");
                 // Call appropriate method
                 switch (action) {
-                    case "enableDisableAudio":
-                        const soundConfig = this.soundscape.class.moods[moodId].getSound(soundId);
-                        const box = button.closest(".music-content");
-                        const icon = button.querySelector(".fas");
-                        if (!this.soundscape.class.moods[moodId].isSoundOn(soundId)) {
-                            if (icon)
-                                icon.className = "fas fa-volume";
-                            if (box)
-                                box.className = "music-content on";
-                            this.soundscape.class.enableDisableSound(moodId, soundId);
-                        } else {
+                    // case "enableDisableAudio":
+                    //     const soundConfig = this.soundscape.moods[moodId].getSound(soundId);
+                    //     const box = button.closest(".music-content");
+                    //     const icon = button.querySelector(".fas");
+                    //     if (!this.soundscape.moods[moodId].isSoundOn(soundId)) {
+                    //         if (icon)
+                    //             icon.className = "fas fa-volume";
+                    //         if (box)
+                    //             box.className = "music-content on";
+                    //         this.soundscape.enableDisableSound(moodId, soundId);
+                    //     } else {
 
-                            if (box)
-                                box.className = "music-content off";
-                            if (icon)
-                                icon.className = "fas fa-volume-xmark";
-                            this.soundscape.class.enableDisableSound(moodId, soundId);
-                        }
+                    //         if (box)
+                    //             box.className = "music-content off";
+                    //         if (icon)
+                    //             icon.className = "fas fa-volume-xmark";
+                    //         this.soundscape.enableDisableSound(moodId, soundId);
+                    //     }
 
-                        break;
+                    //     break;
                     case "volume":
-                        const volume_ui = button.parentNode.querySelector('.volume-value');
-                        volume_ui.innerText = parseInt(button.value * 100) + "%";
-                        this.soundscape.class.changeSoundVolume(moodId, soundId, button.value);
+                        await this.soundscape.changeSoundVolume(moodId, soundId, button.value);
+                        // if (
+                        //     ((button.value == 0 && button.dataset.currentValue != 0) || (button.value != 0 && button.dataset.currentValue== 0))
+                        //     &&
+                        //     parseInt(button.dataset?.soundType) != constants.SOUNDTYPE.SOUNDPADUI
+                        // ) {
+                        //     this.soundscape.enableDisableSound(moodId, soundId);
+                        // }
                         break;
                     case "intensity":
-                        const intensity_ui = button.parentNode.querySelector('.compact-intensity-slider');
-                        intensity_ui.innerText = parseInt(button.value);
-                        this.soundscape.class.changeSoundIntensity(moodId, group, button.value);
+                        this.soundscape.changeSoundIntensity(moodId, soundId, button.value);
                         break;
                     case "edit-sound":
-
-                        this.soundEdit(moodId, soundId, group);
+                        this.soundEdit(moodId, soundId, soundType);
                         return;
                         break;
                     case "play":
-                        if (!this.soundscape.class.moods[moodId].isPlaying()){
+                        if (!this.soundscape.moods[moodId].isPlaying()) {
                             ui.notifications.warn("You need to start the mood before you can play a soundpad sound.");
                             return;
                         }
-                        const sound = this.soundscape.class.moods[moodId].getSound(soundId);
+                        const sound = await this.soundscape.moods[moodId].getSound(soundId);
+                        console.warn(sound);
                         if (sound.type == constants.SOUNDTYPE.SOUNDPADUI) {
                             const i = button.querySelector("i");
                             i.className = "fas fa-stop";
                             button.dataset.action = "stop";
-                            const s = this.soundscape.class.playlist.sounds.get(sound.id);
+                            const s = this.soundscape.playlist.sounds.get(sound.id);
                             await s.load();
-                            await this.soundscape.class.playSound(sound, moodId);
-                            
-                             const previewEndEvent = () => {
+                            await this.soundscape.playSound(sound, moodId);
+
+                            const previewEndEvent = () => {
                                 s.sound.removeEventListener('end', previewEndEvent);
                                 s.sound.removeEventListener('stop', previewEndEvent);
                                 i.className = "fas fa-play";
                                 button.dataset.action = "play";
-                                //this.soundscape.class.stopSound(sound, moodId);
+                                //this.soundscape.stopSound(sound, moodId);
                             };
                             s.sound.addEventListener(
-                                'end',previewEndEvent
+                                'end', previewEndEvent
                             );
                             s.sound.addEventListener(
                                 'stop', previewEndEvent
@@ -441,37 +445,39 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         }
                         break;
                     case "stop":
-                        const sounds = this.soundscape.class.moods[moodId].getSound(soundId);
+                        const sounds = await this.soundscape.moods[moodId].getSound(soundId);
+
                         const i = button.querySelector("i");
                         if (sounds.type == constants.SOUNDTYPE.SOUNDPADUI) {
                             i.className = "fas fa-play";
                             button.dataset.action = "play";
-                            this.soundscape.class.stopSound(sounds,moodId);
+                            console.warn("Stop sound", sounds)
+                            this.soundscape.stopSound(sounds, moodId);
                             return;
                         }
                         break;
                     case "preview-sound":
-                        const soundToPreview = this.soundscape.class.moods[moodId].getSound(soundId);
-                        const soundToPlay = this.soundscape.class.playlist.sounds.get(soundToPreview.id);
+                        const soundToPreview = this.soundscape.moods[moodId].getSound(soundId);
+                        const soundToPlay = this.soundscape.playlist.sounds.get(soundToPreview.id);
                         await soundToPlay.load();
                         const isLoop = soundToPlay.sound.loop;
                         const volume = soundToPlay.sound.volume;
                         if (soundToPlay.playing) {
-                            this.soundscape.class.playlist.stopSound(soundToPlay);
+                            this.soundscape.playlist.stopSound(soundToPlay);
                         } else {
-                            const preview_icon = button.querySelector(".sound-control-icon");
+                            const preview_icon = button.querySelector("i");
                             preview_icon.style.color = "orange";
-                            preview_icon.className = "fas fa-stop sound-control";
+                            preview_icon.className = "fas fa-stop";
                             soundToPlay.update({ "repeat": false, "volume": 0.6 });
-                            await this.soundscape.class.playlist.playSound(soundToPlay);
+                            await this.soundscape.playlist.playSound(soundToPlay);
                             const previewEndEvent = () => {
                                 soundToPlay.sound.removeEventListener('end', previewEndEvent);
-                                this.soundscape.class.playlist.stopSound(soundToPlay);
+                                this.soundscape.playlist.stopSound(soundToPlay);
                             };
 
                             const previewStopEvent = () => {
                                 soundToPlay.sound.removeEventListener('stop', previewStopEvent);
-                                preview_icon.className = "fas fa-play sound-control";
+                                preview_icon.className = "fas fa-play";
                                 preview_icon.style.color = "";
                                 soundToPlay.update({ "repeat": isLoop, "volume": volume });
                             }
@@ -508,30 +514,31 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         // Category controls
         this.element.querySelectorAll(".category-control").forEach(async (button) => {
             button.addEventListener('click', async (e) => {
-                const dataset = e.currentTarget.dataset;
-
+                const dataset = e.currentTarget.closest(".sa-dataset").dataset;
+                const category_name = dataset.categoryName;
                 const moodId = dataset.moodId;
                 const categoryId = dataset?.categoryId ? dataset.categoryId : 0;
-                const action = dataset.action;
+                const action = e.currentTarget.dataset.action;
                 if (action == "play" || action == "stop") {
-                    this.soundscape.class.playStopCategory(moodId, categoryId, action)
+                    this.soundscape.playStopCategory(moodId, categoryId, action)
                 } else if (action == "delete") {
                     const confirm = await foundry.applications.api.DialogV2.prompt({
                         window: { title: "Confirmation" },
-                        content: "<p>Confirm delete the category?</p>",
+                        content: `<p>Confirm delete the category ${category_name}?</p>`,
                         modal: true,
                         rejectClose: false
                     });
                     if (confirm) {
-                        await this.soundscape.class.deleteCategory(moodId, categoryId);
+                        await this.soundscape.deleteCategory(moodId, categoryId);
                         this.myRender(true);
                     }
                 } else if (action == "enableAll") {
-                    this.soundscape.class.enableSoundsinCategory(moodId, categoryId);
+                    this.soundscape.enableSoundsinCategory(moodId, categoryId);
                     this.myRender(true);
+                } else if (action == "collapse") {
+                    this.soundscape.toggleCategoryCollapsed(moodId, categoryId);
+                     this.myRender(true);
                 }
-
-
             });
         });
 
@@ -540,7 +547,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 const rect = el.getBoundingClientRect();
                 const scrollSpeed = 10;
                 const threshold = 40; // distance from edge to start scrolling
-                const content = this.element.querySelector('.mood-active');
+                const content = this.element.querySelector('.sa-content');
                 this.scrollTop = content?.scrollTop ?? 0;
 
                 if (e.clientY < rect.top + threshold) {
@@ -553,37 +560,39 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             });
         });
 
-        this.element.querySelectorAll('.sound-category').forEach(el => {
-            const button = el.querySelector(".category-title");
-            const collapeDiv = el.querySelector(".soundscapeadv-container, .soundpad-list-container");
-            if (button && collapeDiv) {
-                button.addEventListener("click", (e) => {
-                    const icon = e.currentTarget.querySelector("i");
-                    if (icon.className.includes("fa-angle-down")) {
-                        icon.className = "fa fa-angle-up";
-                    } else {
-                        icon.className = "fa fa-angle-down";
-                    }
-                    const categoryId = e.currentTarget.dataset.categoryId;
-                    const parent = e.currentTarget.closest(".soundboardadv-main");
-                    const moodId = parent.dataset.moodId;
-                    const type = e.currentTarget.dataset.categoryType;
+        // this.element.querySelectorAll('.sound-category').forEach(el => {
+        //     const button = el.querySelector(".category-title");
+        //     const collapeDiv = el.querySelector(".soundscapeadv-container, .soundpad-list-container");
+        //     if (button && collapeDiv) {
+        //         button.addEventListener("click", (e) => {
+        //             const icon = e.currentTarget.querySelector("i");
+        //             if (icon.className.includes("fa-angle-down")) {
+        //                 icon.className = "fa fa-angle-up";
+        //             } else {
+        //                 icon.className = "fa fa-angle-down";
+        //             }
+        //             const categoryId = e.currentTarget.dataset.categoryId;
+        //             const parent = e.currentTarget.closest(".soundboardadv-main");
+        //             const moodId = parent.dataset.moodId;
+        //             const type = parseInt(e.currentTarget.dataset.categoryType);
 
-                    const category = this.soundscape.class.moods[moodId].categories.find(el => el.id == categoryId && el.type == type);
-                    category.collapsed = !category.collapsed;
+        //             const mood = this.soundscape.getMood(moodId);
+        //             if (mood) {
+        //                 mood.toggleCategoryCollapsed(categoryId);
+        //             }
 
 
-                    const content = this.element.querySelector('.mood-active');
-                    this.scrollTop = content?.scrollTop ?? 0;
-                    const isVisible = collapeDiv.style.display !== 'none';
-                    collapeDiv.style.display = isVisible ? 'none' : '';
-                });
-            }
-        })
+        //             const content = this.element.querySelector('.sa-content');
+        //             this.scrollTop = content?.scrollTop ?? 0;
+        //             const isVisible = collapeDiv.style.display !== 'none';
+        //             collapeDiv.style.display = isVisible ? 'none' : '';
+        //         });
+        //     }
+        // })
 
         this.element.querySelectorAll(".new-category").forEach(el => {
             el.addEventListener("click", async (ev) => {
-                const content = this.element.querySelector('.mood-active');
+                const content = this.element.querySelector('.sa-content');
                 this.scrollTop = content?.scrollTop ?? 0;
                 let category_name;
                 try {
@@ -599,12 +608,13 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     return;
                 }
 
-                const dataset = ev.target.closest(".mood-active").dataset;
-                const sound_group = ev.target.closest(".sound-group-type").dataset?.soundType;
-                if (sound_group) {
-                    await this.soundscape.class.createCategory(dataset.moodId, sound_group, category_name);
-                    this.soundscape.class.moods[dataset.moodId].has_changes = true;
-                    const content = this.element.querySelector('.mood-active');
+                const dataset = ev.target.closest(".sa-group").dataset;
+                const sound_group = dataset?.soundType;
+                const moodid = dataset?.moodId
+                if (sound_group && moodid) {
+                    await this.soundscape.createCategory(moodid, sound_group, category_name);
+                    this.soundscape.markMoodAsChanged(moodid);
+                    const content = this.element.querySelector('.sa-content');
                     this.scrollTop = content?.scrollTop ?? 0;
                     this.myRender(true);
                 }
@@ -637,14 +647,14 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     async close(options = {}) {
 
-        SoundscapeAdventure.closeUI(this.soundscape.class.id);
+        SoundscapeAdventure.closeUI(this.soundscape.id);
 
         // Call the original close method
         return super.close(options);
     }
 
     async moodEdit(moodId) {
-        const mood = this.soundscape.class.moods[moodId];
+        const mood = this.soundscape.moods[moodId];
 
         const templatePath = "/modules/soundscape-adventure/templates/editmood.hbs";
         const triggers = [];
@@ -725,7 +735,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         const removeAllTriggers = dialog.element.querySelector('.removeAllTriggers');
         removeAllTriggers.addEventListener('click', async (event) => {
             const dataset = event.srcElement.dataset;
-            this.soundscape.class.removeAllTriggers(dataset.moodId);
+            this.soundscape.removeAllTriggers(dataset.moodId);
         })
         for (let i = 0; i < browser.length; i++) {
             browser[i].addEventListener('change', async (event) => {
@@ -756,8 +766,15 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             });
         }
     }
-    async soundEdit(moodId, soundId, group) {
-        const soundConfig = this.soundscape.class.moods[moodId].getSound(soundId);
+    async soundEdit(moodId, soundId, soundType) {
+        console.warn("Editing sound", moodId, soundId, soundType);
+        let soundConfig = null;
+        if (soundType == constants.SOUNDTYPE.GROUP_LOOP || soundType == constants.SOUNDTYPE.GROUP_RANDOM) {
+            soundConfig = await this.soundscape.moods[moodId].getGroup(soundId);
+        } else {
+            soundConfig = await this.soundscape.moods[moodId].getSound(soundId);
+        }
+
         const templatePath = "/modules/soundscape-adventure/templates/editsound.hbs";
         let others = {};
         const triggers = [];
@@ -851,9 +868,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }
 
 
-        const sounds = this.soundscape.class.moods[moodId].getSoundByGroup(soundConfig.group);
-
-        const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { sound: soundConfig, sounds: sounds, triggers: triggers, groups: this.soundscape.class.moods[moodId].groups });
+        //const sounds = this.soundscape.moods[moodId].getSoundByGroup(soundConfig.id);
+        console.warn("SoundConfig", soundConfig)
+        const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { sound: soundConfig, sounds: soundConfig?.sounds, triggers: triggers, groups: this.soundscape.moods[moodId].groups });
         const soundEditDialog = new foundry.applications.api.DialogV2({
             window: { title: "Edit sound" },
             content: html_content,
@@ -879,6 +896,33 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         const addSound = soundEditDialog.element.querySelector(".sound-add-group");
 
+        const fadeIn = soundEditDialog.element.querySelector(".fadeIn");
+        const fadeOut = soundEditDialog.element.querySelector(".fadeOut");
+
+        if (fadeIn) {
+            const range_fadeIn = fadeIn.querySelector(".fadeIn-range");
+            if (range_fadeIn) {
+                range_fadeIn.addEventListener("change", async (el) => {
+                    const new_value = el.target.value;
+                    const fadein_element = fadeIn.querySelector('.fadeIn-value');
+                    fadein_element.innerText = `${new_value}s`;
+
+                });
+            }
+        }
+
+        if (fadeOut) {
+            const range_fadeOut = fadeOut.querySelector(".fadeOut-range");
+            if (range_fadeOut) {
+                range_fadeOut.addEventListener("change", async (el) => {
+                    const new_value = el.target.value;
+                    const fadeout_element = fadeOut.querySelector('.fadeOut-value');
+                    fadeout_element.innerText = `${new_value}s`;
+
+                });
+            }
+        }
+
         // Attach to your button
         const filePickerIcon = soundEditDialog.element.querySelector(".file-picker")
 
@@ -889,6 +933,26 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     callback: path => {
                         const input = soundEditDialog.element.querySelector("input[name='soundIcon']");
                         input.value = path;
+                        let img = soundEditDialog.element.querySelector(".sound-icon");
+                        if (img) {
+                            img.src = path;
+                        } else {
+                            const element = soundEditDialog.element.querySelector(".sound-icon-button");
+                            const icon = element.querySelector("i");
+                            if (icon) {
+                                icon.remove();
+                            }
+                            // Create the <img> element
+                            img = document.createElement("img");
+                            img.src = path;   // <-- change this
+                            img.style.width = "32px";
+                            img.style.height = "32px";
+                            img.style.pointerEvents = "none";
+                            img.className = "sound-icon";
+
+                            // Append the image to the button
+                            element.appendChild(img);
+                        }
                     }
                 });
                 picker.render(true);
@@ -909,7 +973,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                                 label: "Yes",
                                 callback: async (event, button) => {
                                     const group = button.form.elements.newGroupName.value;
-                                    await this.soundscape.class.addSoundToGroup(moodId, dataset.soundId, group);
+                                    // if (dataset.soundId == "") {
+                                    //     ui.notifications.error(`Not able to create the group ${group}. Sound ID is missing.`);
+                                    //     return;
+                                    // }
+                                    await this.soundscape.addSoundToNewGroup(moodId, soundId, group);
                                     soundEditDialog.close();
                                     this.myRender(true);
                                 },
@@ -924,17 +992,18 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     });
                     confirmation_dialog.render(true);
                 } else if (el.target.value) {
-                    const group = el.target.value;
+                    const groupId = el.target.value;
                     const dataset = el.target.dataset;
+                    const groupName = el.target.options[el.target.selectedIndex].text;
                     const confirmation_dialog = new foundry.applications.api.DialogV2({
                         window: { title: "Add sound to Group" },
-                        content: `<p>Are you sure you want to add the sound to the group ${group}?</p>`,
+                        content: `<p>Are you sure you want to add the sound <b>${dataset.soundName}?</b> to the group ${groupName}</p>`,
                         buttons: [
                             {
                                 action: "yes",
                                 label: "Yes",
                                 callback: async () => {
-                                    await this.soundscape.class.addSoundToGroup(moodId, dataset.soundId, group);
+                                    await this.soundscape.addSoundToGroup(moodId, dataset.soundId, groupId);
                                     soundEditDialog.close();
                                     this.myRender(true);
                                 },
@@ -966,9 +1035,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             action: "yes",
                             label: "Yes",
                             callback: () => {
-                                this.soundscape.class.removeSoundFromGroup(moodId, dataset.soundId);
-                                const parent = el.target.closest(".sound-element-group");
-                                const toRemove = el.target.closest(".sound-element");
+                                this.soundscape.removeSoundFromGroup(moodId, dataset.soundId, dataset.groupId);
+                                const parent = el.target.closest(".group-names");
+                                const toRemove = el.target.closest(".sound-remove-group");
                                 parent.removeChild(toRemove);
                                 soundEditDialog.close();
                                 this.myRender(true);
@@ -978,8 +1047,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         {
                             action: "no",
                             label: "No",
-                            callback: () => { 
-                                utils.log(utils.getCallerInfo(),`Sound not removed`, constants.LOGLEVEL.INFO);
+                            callback: () => {
+                                utils.log(utils.getCallerInfo(), `Sound not removed`, constants.LOGLEVEL.INFO);
                             },
                             icon: "fas fa-times"
                         }]
@@ -1026,8 +1095,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             }
             triggers.push(trigger)
         }
-        this.soundscape.class.moods[moodId].name = elements.moodName.value;
-        this.soundscape.class.saveTrigger(moodId, "mood", triggers);
+        this.soundscape.moods[moodId].name = elements.moodName.value;
+        this.soundscape.saveTrigger(moodId, "mood", triggers);
         this.myRender(true);
     }
     async updateSound(elements, soundId, moodId) {
@@ -1057,147 +1126,97 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             }
             triggers.push(trigger)
         }
-        await this.soundscape.class.saveExtas(moodId, soundId, new_interval, new_fade, playOnce);
+        await this.soundscape.saveExtas(moodId, soundId, new_interval, new_fade, playOnce);
 
         if (elements?.soundName)
-            await this.soundscape.class.updateSoundName(soundId, elements.soundName.value);
-        await this.soundscape.class.saveTrigger(moodId, soundId, triggers);
+            await this.soundscape.updateSoundName(soundId, elements.soundName.value);
+        await this.soundscape.saveTrigger(moodId, soundId, triggers);
         if (elements?.soundIcon?.value) {
-            await this.soundscape.class.updateSoundIcon(soundId, elements.soundIcon.value);
+            await this.soundscape.updateSoundIcon(moodId, soundId, elements.soundIcon.value);
         }
         this.myRender(true);
     }
 
     updateMoodName(moodId, MoodName) {
-        this.soundscape.class.moods[moodId].name = MoodName;
-        this.soundscape.class.saveMoodsConfig();
+        this.soundscape.moods[moodId].name = MoodName;
+        this.soundscape.saveMoodsConfig();
         this.myRender(true);
 
     }
 
     async _prepareContext(options) {
-        if (this.soundscape.class.currentMoodOnUI.length) {
-            this.currentMoodOnUI = this.soundscape.class.currentMoodOnUI; // previously activeMoodId;
-        } else {
+        // Determine the current active mood
+        this._determineCurrentMood();
 
-            const config = await game.settings.get(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI");
-            const currentMoodSOnUI = [];
-            if (config.length) {
-                currentMoodSOnUI.push(...((config).split(":").filter((e) => e != "")));
-                for (const key in this.soundscape.class.moods) {
-                    if (currentMoodSOnUI.includes(key)) {
-                        this.currentMoodOnUI = key;
-                        break;
-                    }
-                }
-            }
-
-            if (!this.currentMoodOnUI) {
-                if (Object.values(this.soundscape.class.moods).length > 0) {
-                    this.currentMood = Object.values(this.soundscape.class.moods)[0].id;
-                }
-            }
-        }
-
+        // Build mood list and selected mood data using MoodConfig view methods
         const moods = [];
+        let selected_mood = null;
 
-        for (const key in this.soundscape.class.moods) {
-            const mood = this.soundscape.class.moods[key];
-            const sounds = [{
-                type: constants.SOUNDTYPE.LOOP,
-                name: "Loop",
-                categories: mood.categories
-                    .filter(el => el?.type == constants.SOUNDTYPE.LOOP)
-                    .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] })),
-            }, {
-                type: constants.SOUNDTYPE.RANDOM,
-                name: "Random",
-                categories: mood.categories
-                    .filter(el => el?.type == constants.SOUNDTYPE.RANDOM)
-                    .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] }))
+        for (const key in this.soundscape.moods) {
+            const mood = this.soundscape.moods[key];
+            const isSelected = this.currentMoodOnUI === mood.id;
 
-            }, {
-                type: constants.SOUNDTYPE.SOUNDPAD,
-                name: "Soundpad",
-                categories: mood.categories
-                    .filter(el => el?.type == constants.SOUNDTYPE.SOUNDPAD)
-                    .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] })),
-            }, {
-                type: constants.SOUNDTYPE.SOUNDPADUI,
-                name: "Soundpad UI",
-                categories: mood.categories
-                    .filter(el => el?.type == constants.SOUNDTYPE.SOUNDPADUI)
-                    .map((i) => ({ id: i.id, name: i.name, type: i.type, collapsed: i.collapsed, sounds: [] })),
-            }]
+            // Get mood summary for the list
+            moods.push(mood.getMoodSummary(isSelected));
 
-            for (let i = 0; i < mood.sounds.length; i++) {
-                // avoid to change the original object sound
-                const sound = structuredClone(mood.sounds[i]);
-                let sound_index = 0;
-                if (sound.type == constants.SOUNDTYPE.RANDOM || sound.type == constants.SOUNDTYPE.GROUP_RANDOM) {
-                    sound_index = 1;
-                } else if (sound.type == constants.SOUNDTYPE.SOUNDPAD || sound.type == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-                    sound_index = 2;
-                } else if (sound.type == constants.SOUNDTYPE.SOUNDPADUI) {
-                    sound_index = 3;
-                }
-                let index = sound.category != "" ? sounds[sound_index].categories.findIndex(el => el.id == sound.category) : 0;
-                if (index < 0) {
-                    index = 0;
-                }
-                if (sound.type == constants.SOUNDTYPE.GROUP_LOOP || sound.type == constants.SOUNDTYPE.LOOP) {
-                    if (sound.type == constants.SOUNDTYPE.GROUP_LOOP) {
-                        const currentsound = sounds[sound_index].categories[index].sounds.find(el => el.group == sound.group);
-                        if (!currentsound) {
-                            sound.name = `Group: ${sound.group}`;
-                            sounds[sound_index].categories[index].sounds.push(sound)
-                        }
-                    } else {
-                        sounds[sound_index].categories[index].sounds.push(sound)
-                    }
-
-                } else if (sound.type == constants.SOUNDTYPE.GROUP_RANDOM || sound.type == constants.SOUNDTYPE.RANDOM) {
-                    if (sound.group != "") {
-                        const currentsound = sounds[sound_index].categories[index].sounds.find(el => el.group == sound.group);
-                        if (!currentsound) {
-                            sound.name = `Group: ${sound.group}`;
-                            sounds[sound_index].categories[index].sounds.push(sound)
-                        }
-                    } else {
-                        sounds[sound_index].categories[index].sounds.push(sound)
-                    }
-
-                } else {
-                    sounds[sound_index].categories[index].sounds.push(sound)
-                }
+            // Get full view data for the selected mood
+            if (isSelected) {
+                selected_mood = mood.getViewData(true);
             }
-            // befora add to the sounds to the mood we need to sort the sounds within the categories
-            for (let i = 0; i < sounds.length; i++) {
-                sounds[i].categories.forEach(category => {
-                    category.sounds.sort((a, b) => a.name.localeCompare(b.name));
-                });
-            }
-            moods.push({
-                id: this.soundscape.class.moods[key].id,
-                name: this.soundscape.class.moods[key].name,
-                status: this.soundscape.class.moods[key].status,
-                has_changes: this.soundscape.class.moods[key].has_changes,
-                sounds: sounds
-            })
         }
+
+        // Get library sounds for the selected mood
         let library = [];
-        if (this.currentMoodOnUI) {
-            library = this.soundscape.class.moods[this.currentMoodOnUI].sounds.filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD);
-            library = library.sort((a, b) => a.name.localeCompare(b.name));
+        if (this.currentMoodOnUI && this.soundscape.moods[this.currentMoodOnUI]) {
+            library = this.soundscape.moods[this.currentMoodOnUI].getLibrarySounds();
         }
+
+        const sound_view = await game.settings.get('soundscape-adventure', "sound-view-type");
+
+        console.warn("Prepared context data for Soundscape UI", selected_mood);
+
         return {
-            name: this.soundscape.class.name,
-            moods: Object.values(moods).sort((a, b) => a.name.localeCompare(b.name)),
-            soundscapeId: this.soundscape.class.id,
-            off_visible: this.soundscape.class.visible_off_sounds,
+            name: this.soundscape.name,
+            moods: moods.sort((a, b) => a.name.localeCompare(b.name)),
+            soundscapeId: this.soundscape.id,
+            off_visible: this.soundscape.visible_off_sounds,
             activeMood: this.currentMoodOnUI,
             library: library,
-            libraryIsOpen: this.libraryIsOpen
+            libraryIsOpen: this.libraryIsOpen,
+            selected_mood: selected_mood,
+            card_view: sound_view === constants.SOUNDVIEW.CARDVIEW
+        };
+    }
+
+    /**
+     * Determine which mood should be displayed as current
+     * @private
+     */
+    _determineCurrentMood() {
+        // Check if soundscape already has a current mood set
+        if (this.soundscape.currentMoodOnUI?.length) {
+            this.currentMoodOnUI = this.soundscape.currentMoodOnUI;
+            return;
+        }
+
+        // Try to get from settings
+        const config = game.settings.get(constants.STORAGETRIGGERSETTINGS, "currentMoodOnUI");
+        if (config?.length) {
+            const savedMoods = config.split(":").filter(e => e !== "");
+            for (const key in this.soundscape.moods) {
+                if (savedMoods.includes(key)) {
+                    this.currentMoodOnUI = key;
+                    return;
+                }
+            }
+        }
+
+        // Default to first mood if none selected
+        if (!this.currentMoodOnUI) {
+            const moodKeys = Object.keys(this.soundscape.moods);
+            if (moodKeys.length > 0) {
+                this.currentMoodOnUI = moodKeys[0];
+            }
         }
     }
 

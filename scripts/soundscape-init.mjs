@@ -25,8 +25,8 @@ Hooks.on('deleteCombat', (combat, updateData) => {
  */
 
 Hooks.on('SoundscapeAdventure-Init', (sidebar, html) => {
-     game.soundscapeAdventure = SoundscapeAdventure;
-      Hooks.call("SoundscapeAdventure-Ready");
+    game.soundscapeAdventure = SoundscapeAdventure;
+    Hooks.call("SoundscapeAdventure-Ready");
 });
 Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
     ui.sidebar.parts[cModuleName].render(true);
@@ -81,7 +81,7 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     } else {
         const soundscape = SoundscapeAdventure.soundscapes[current.soundscape];
         if (soundscape) {
-            if (!soundscape.class.moods.hasOwnProperty(current.mood)) {
+            if (!soundscape.moods.hasOwnProperty(current.mood)) {
                 ui.notifications.warn("The mood " + current.mood + " is not available in the soundscape " + current.soundscape + ". Reseting scene config.");
                 current.action = "";
                 current.mood = "";
@@ -129,10 +129,10 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
 
     for (let key in soundscapes) {
         const option = document.createElement('option');
-        option.value = soundscapes[key].class.id;
-        if (current.soundscape == soundscapes[key].class.id)
+        option.value = soundscapes[key].id;
+        if (current.soundscape == soundscapes[key].id)
             option.selected = "selected";
-        option.textContent = soundscapes[key].class.name;
+        option.textContent = soundscapes[key].name;
         select1.appendChild(option);
     }
 
@@ -150,7 +150,7 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
 
     if (current.soundscape) {
         const soundscape = SoundscapeAdventure.soundscapes[current.soundscape];
-        const moods = soundscape.class.moods;
+        const moods = soundscape.moods;
         for (let key in moods) {
             const option2_2 = document.createElement('option');
             option2_2.value = moods[key].id;
@@ -168,7 +168,7 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
         }
         const soundboard = SoundscapeAdventure.soundscapes[select1.value];
         if (soundboard) {
-            const moods = soundboard.class.moods;
+            const moods = soundboard.moods;
             const soption = document.createElement('option');
             soption.value = "";
             soption.textContent = "Select a mood";
@@ -261,15 +261,15 @@ Hooks.on('updateScene', async (scene, data, modified, sceneId) => {
     if (game.ready && data.active) {
 
         if (action == "play") {
-            await SoundscapeAdventure.soundscapes[soundscape].class.playMood(mood);
+            await SoundscapeAdventure.soundscapes[soundscape].playMood(mood);
         } else {
-            await SoundscapeAdventure.soundscapes[soundscape].class.stopMood(mood);
+            await SoundscapeAdventure.soundscapes[soundscape].stopMood(mood);
         }
         // invert the logic, if the trigger is to play a mood when scene is activated, we stop it when scene is deactivated
         Hooks.call("SoundscapeAdventure-UpdateSidebar");
     } else if (game.ready && !data.active) {
         if (action == "play") {
-            await SoundscapeAdventure.soundscapes[soundscape].class.stopMood(mood);
+            await SoundscapeAdventure.soundscapes[soundscape].stopMood(mood);
         }
 
         Hooks.call("SoundscapeAdventure-UpdateSidebar");
@@ -281,6 +281,9 @@ Hooks.on('updateScene', async (scene, data, modified, sceneId) => {
  */
 Hooks.once('init', () => {
     game.soundscapeAdventure = {}
+    Handlebars.registerHelper('isMoodPlaying', function (status, options) {
+        return (status == constants.STATUS.MOOD.PLAYING) ? options.fn(this) : options.inverse(this);
+    });
     Handlebars.registerHelper('eachSoundType', function (array, options) {
         let result = '';
         let groups = [];
@@ -326,17 +329,17 @@ Hooks.once('init', () => {
     });
 
     Handlebars.registerHelper('soundStatus', function (modStatus, soundStatus) {
-        if (soundStatus == "on" && modStatus == "playing") {
+        if (soundStatus == constants.STATUS.SOUND.ON && modStatus == constants.STATUS.MOOD.PLAYING) {
             return true;
         }
         return false;
     });
 
     Handlebars.registerHelper('opositeAction', function (status) {
-        if (status == "on") {
-            return 'off';
+        if (status == constants.STATUS.SOUND.ON) {
+            return constants.STATUS.SOUND.OFF;
         }
-        return 'on';
+        return constants.STATUS.SOUND.ON;
     });
 
     Handlebars.registerHelper('volumeUI', function (volume) {
@@ -390,19 +393,20 @@ Hooks.once('init', () => {
 
     Handlebars.registerHelper('ifNotEquals', function (arg1, arg2, options) {
         return (arg1 != arg2) ? options.fn(this) : options.inverse(this);
+        
     });
 
     Handlebars.registerHelper('isPlaying', function (soundId, soundscapeId, moodId, options) {
-        const soundConfig = SoundscapeAdventure.soundscapes[soundscapeId].class.moods[moodId].getSound(soundId);
+        const soundConfig = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSound(soundId);
         let sound = {};
         if (soundConfig.group == "") {
-            sound = SoundscapeAdventure.soundscapes[soundscapeId].class.playlist.sounds.get(soundId);
+            sound = SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(soundId);
         } else {
 
-            const listSounds = SoundscapeAdventure.soundscapes[soundscapeId].class.moods[moodId].getSoundByGroup(soundConfig.group);
+            const listSounds = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSoundByGroup(soundConfig.id);
             sound.playing = false;
             for (let i = 0; i < listSounds.length; i++) {
-                if (SoundscapeAdventure.soundscapes[soundscapeId].class.playlist.sounds.get(listSounds[i].id).playing) {
+                if (SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(listSounds[i].id).playing) {
                     sound.playing = true;
                     break;
                 }
@@ -445,6 +449,20 @@ Hooks.once('init', () => {
     // length helper
     Handlebars.registerHelper("length", function (arr) {
         return Array.isArray(arr);
+    });
+
+    // check if is empty os array lengh is 0
+    Handlebars.registerHelper("ifEmptyArray", function (arr, options) {
+        if (Array.isArray(arr)) {
+            if (arr.length > 0) {
+                return options.inverse(this);
+            }
+        }
+        return options.fn(this);
+    })
+
+    Handlebars.registerHelper("gteZero", function (value) {
+        return Number(value) > 0;
     });
 
 });
