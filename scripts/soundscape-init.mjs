@@ -396,28 +396,28 @@ Hooks.once('init', () => {
         
     });
 
-    Handlebars.registerHelper('isPlaying', function (soundId, soundscapeId, moodId, options) {
-        const soundConfig = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSound(soundId);
-        let sound = {};
-        if (soundConfig.group == "") {
-            sound = SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(soundId);
-        } else {
+    // Handlebars.registerHelper('SAisPlaying', function (soundId, soundscapeId, moodId, options) {
+    //     const soundConfig = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSound(soundId);
+    //     let sound = {};
+    //     if (soundConfig.group == "") {
+    //         sound = SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(soundId);
+    //     } else {
 
-            const listSounds = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSoundByGroup(soundConfig.id);
-            sound.playing = false;
-            for (let i = 0; i < listSounds.length; i++) {
-                if (SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(listSounds[i].id).playing) {
-                    sound.playing = true;
-                    break;
-                }
-            }
-        }
-        if (sound.playing) {
-            return options.fn(this);
-        } else {
-            return options.inverse(this);
-        }
-    });
+    //         const listSounds = SoundscapeAdventure.soundscapes[soundscapeId].moods[moodId].getSoundByGroup(soundConfig.id);
+    //         sound.playing = false;
+    //         for (let i = 0; i < listSounds.length; i++) {
+    //             if (SoundscapeAdventure.soundscapes[soundscapeId].playlist.sounds.get(listSounds[i].id).playing) {
+    //                 sound.playing = true;
+    //                 break;
+    //             }
+    //         }
+    //     }
+    //     if (sound.playing) {
+    //         return options.fn(this);
+    //     } else {
+    //         return options.inverse(this);
+    //     }
+    // });
 
     Handlebars.registerHelper("inColumn", function (itemIndex, buttonsPerColumn, totalColumns, currentColumnIndex) {
         itemIndex = Number(itemIndex);
