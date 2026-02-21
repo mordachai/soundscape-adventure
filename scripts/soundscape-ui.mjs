@@ -331,6 +331,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         break;
                     case "configMood":
                         this.moodEdit(moodId);
+                        return;
                         break;
                     case "createMood":
                         await this.soundscape.dialogNewMood();
@@ -714,7 +715,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }
         const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { mood: mood, triggers: triggers });
         const dialog = new foundry.applications.api.DialogV2({
-            window: { title: `Edit ${mood.name}` },
+            window: { title: `Edit ${mood.name}`, modal: true },
             content: html_content,
             buttons: [
                 {
@@ -730,7 +731,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     icon: "fas fa-times"
                 }]
         });
-        await dialog.render(true);
+        await dialog.render({ force: true });
         const browser = dialog.element.querySelectorAll('.onElement');
         const removeAllTriggers = dialog.element.querySelector('.removeAllTriggers');
         removeAllTriggers.addEventListener('click', async (event) => {
