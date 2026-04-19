@@ -121,7 +121,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 
 			rejectClose: false
-		});
+		},{parent: this});
 	}
 
 	async promptFileLoad(type = ".json") {
@@ -165,7 +165,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 		vLoadSoundscapeButton.onclick = async (pEvent, pContext = {}) => {
 
 			const path = await new Promise((resolve, reject) => {
-				new FilePicker({
+				new foundry.applications.apps.FilePicker.implementation({
 					type: "file",
 					callback: (path) => {
 						if (path) {
@@ -296,7 +296,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 					const remove_playlist = await foundry.applications.api.DialogV2.confirm({
 						window: { title: "Delete soundscape" },
 						content: "<p>Do you really want to remove the soundscape? (also the playlist will be removed)</p>"
-					});
+					},{parent: this});
 					if (remove_playlist) {
 						await SoundscapeAdventure.deleteSoundscape(deleteButton.dataset.soundboardId, remove_playlist);
 					}

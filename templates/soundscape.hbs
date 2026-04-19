@@ -162,24 +162,12 @@
                             <div class="soundscape-sound-card {{#unless (eq this.group "")}}group{{/unless}} data-drag"
                                 data-sound-id="{{ this.id }}" data-mood-id="{{ ../../../id }}">
                                 <div class="soundscape-sound-top-row">
-                                    <!--div class="soundscape-sound-settings-icon"-->
-                                    {{!-- <button class="sound-control" data-tooltip="Configuration"
-                                        data-action="edit-sound" data-mood-id="{{ ../../../id }}"
-                                        data-sound-id="{{ this.id }}" data-group="{{ this.group }}"> --}}
                                         <div style="display: flex; gap: 0.5rem;">
                                             <i class="fas fa-cog sound-control sound-control-icon"
                                                 data-tooltip="Configuration" data-action="edit-sound"
                                                 data-mood-id="{{ ../../../id }}" data-sound-id="{{ this.id }}"
                                                 data-group="{{ this.group }}"></i>
-
-                                            {{!-- <i class="fas fa-ear sound-control sound-control-icon"
-                                                data-tooltip="Preview" data-action="preview-sound"
-                                                data-mood-id="{{ ../../../id }}" data-sound-id="{{ this.id }}"
-                                                data-group="{{ this.group }}"></i> --}}
                                         </div>
-                                        {{!--
-                                    </button> --}}
-                                    <!--/div-->
                                     {{#unless (eq ../../type 3)}}
                                     <label class="soundscape-sound-switch">
                                         <input class="sound-control" type="checkbox" data-action="enableDisableAudio"
@@ -243,21 +231,6 @@
         style="{{#if (not activeMood)}} display: none; {{/if}}">
         <div class="soundscape-sliding-ear">{{#if libraryIsOpen}}❮{{else}}❯{{/if}}</div>
         <div class="soundscape-sliding-panel-content">
-            
-            {{!-- <div class="flexrow dropzone-area drop-zone" data-drop-zone-type="3" data-drop-zone-category="" style="    border: 2px dashed #ffffff;
-    align-items: center;
-    justify-content: center;
-    background-color: rgb(0 0 0 / 20%);
-    margin-right: 10px;
-    position: absolute;
-    float: right;
-    width: 150px;
-        margin-left: 130px; font-size: smaller;  margin-top: -5px;">
-                    <div class="file-upload-icon" style="text-align: center;">
-                        <i class="fa-solid fa-file-arrow-down"></i>
-                    </div>
-                    <p style="flex: 3">Drop sounds to the library here</p>
-                </div> --}}
                 <h2 class="">Sound Library</h2>
                 <input type="text" class="filterInput" placeholder="Search sound by name..." class="form-control" />
                 
@@ -276,32 +249,13 @@
                             <span class="library-sound-name" data-full-name="{{this.name}}">{{this.name}}</span>
                         </div>
 
-                        {{!-- Volume Slider
-                        <div class="soundpad-volume-section">
-                            <div class="soundpad-volume-container" draggable="false">
-                                <span class="volume-label">Vol:</span>
-                                <input type="range" min="0" max="1" step="0.05"
-                                    class="soundpad-volume-slider sound-control" value="asd" data-sound-id="asd"
-                                    data-mood-id="asd" data-action="volume" draggable="false" />
-                                <span class="volume-value" id="volume-value-12">12</span>
-                            </div>
-                        </div> --}}
-
                         {{!-- Action Buttons --}}
                         <div class="soundpad-actions" style="align-items: center;justify-content: end;">
-                            {{!-- <button class="soundpad-btn sound-control" data-tooltip="Configuration"
-                                data-action="edit-sound" data-mood-id="asd" data-sound-id="asd" data-group="ad">
-                                <i class="fas fa-cog"></i>
-                            </button> --}}
                             <button class="soundpad-btn sound-control" data-tooltip="Preview"
                                 data-action="preview-sound" data-mood-id="{{ ../activeMood }}"
                                 data-sound-id="{{ this.id }}" data-group="{{ this.group }}">
                                 <i class="fas fa-play sound-control-icon"></i>
                             </button>
-                            {{!-- <button class="soundpad-btn sound-control" data-tooltip="Play sound"
-                                data-action="preview" data-mood-id="dasd" data-sound-id="asd" data-group="dasd">
-                                <i class="fas fa-play"></i>
-                            </button> --}}
                         </div>
                     </div>
 
