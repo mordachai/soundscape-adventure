@@ -308,12 +308,11 @@ export default class Soundscape {
     }
 
     async playStopMood(moodId) {
-        console.warn("Toggling mood", moodId, this.moods[moodId].status, constants.STATUS.MOOD.PLAYING);
         if (this.moods[moodId].status == constants.STATUS.MOOD.PLAYING) {
             await this.stopMood(moodId);
         } else {
             if (this.activeMoodId && this.activeMoodId != moodId) {
-                await this.stopMood(this.activeMoodId);
+                await this.stopMood(this.activeMoodId, moodId);
             }
             await this.playMood(moodId);
         }
@@ -400,8 +399,11 @@ export default class Soundscape {
             await game.settings.set(`soundscape-adventure`, "regionSoundscapes", soundscapes);
         }
     }
-    async stopMood(moodId) {
-        console.warn("Stopping mood", moodId);
+    async stopMood(moodId, futureMoodId = "") {
+        let futureSounds = [];
+        if (futureMoodId) {
+            futureSounds = await this.moods[futureMoodId].getSoundsToPlay();
+        }
 
         this.moods[moodId].status = constants.STATUS.MOOD.STOP;
         if (this.activeMoodId == moodId) {
@@ -409,6 +411,12 @@ export default class Soundscape {
         }
         const sounds = await this.moods[moodId].getSoundsToPlay();
         for (let i = 0; i < sounds.length; i++) {
+            const isFutureSound = futureSounds.find(s => s.id == sounds[i].id);
+            if (isFutureSound) {
+                if ((isFutureSound.type == constants.SOUNDTYPE.LOOP || isFutureSound.type == constants.SOUNDTYPE.GROUP_LOOP) && isFutureSound.type == sounds[i].type) {
+                    continue;
+                }
+            }
             await this.stopSound(sounds[i], moodId, true);
         }
         const soundpadSounds = await this.moods[moodId].sounds.filter(obj => obj.type == constants.SOUNDTYPE.SOUNDPADUI);
@@ -420,7 +428,7 @@ export default class Soundscape {
         for (let i = 0; i < groups.length; i++) {
             const soundGroup = await this.moods[moodId].getSound(groups[i].current)
             if (soundGroup) {
-                console.warn("stopping group sound", soundGroup);
+                //console.warn("stopping group sound", soundGroup);
                 await this.stopSound(soundGroup, moodId);
             }
         }
@@ -600,8 +608,8 @@ export default class Soundscape {
             if (newVolume == 0) {
                 this.stopSound(soundConfig, moodId);
             } else if (oldVolume == 0 && newVolume > 0 &&
-                       soundConfig.type != constants.SOUNDTYPE.SOUNDPADUI &&
-                       soundConfig.type != constants.SOUNDTYPE.SOUNDPAD) {
+                soundConfig.type != constants.SOUNDTYPE.SOUNDPADUI &&
+                soundConfig.type != constants.SOUNDTYPE.SOUNDPAD) {
                 this.playSound(soundConfig, moodId);
             }
         }
@@ -671,7 +679,6 @@ export default class Soundscape {
         const soundGroup = await this.moods[moodId].groups.find(g => g.id == groupId);
         if (soundGroup.sounds.length > 0) {
             if (soundGroup.type == constants.SOUNDTYPE.GROUP_LOOP) {
-                console.warn("Playing group loop from group", moodId);
                 this._playLoopGroup(soundGroup, moodId);
             }
         }
@@ -683,9 +690,7 @@ export default class Soundscape {
         for (let i = 0; i < stopSounds.length; i++) {
             await this.playlist.stopSound({ id: stopSounds[i].id });
         }
-        console.warn("Group from mood", moodId, groupConfig);
         const soundConfig = await this.moods[moodId].getSound(groupConfig.current);
-        console.warn("Playing group loop sound", soundConfig);
         await this._playSound(soundConfig, playlistSound);
     }
 
@@ -831,9 +836,9 @@ export default class Soundscape {
             this.randomSoundManager.stop(this.playlistId, grupoofsounds);
         }
         // await this.moods[moodId].addSoundToGroup(soundId, groupId);
-         group.addSound({ id: sound.id, name: sound.name });
-         sound.group = group.id;
-         this.moods[moodId].has_changes = true;
+        group.addSound({ id: sound.id, name: sound.name });
+        sound.group = group.id;
+        this.moods[moodId].has_changes = true;
         // restart  the group random
         if (group.status == constants.STATUS.SOUND.ON && group.type == constants.SOUNDTYPE.GROUP_RANDOM && this.moods[moodId].status == constants.STATUS.MOOD.PLAYING) {
             const groupOfSounds = group.sounds.map(sound => sound.id);
@@ -1056,7 +1061,7 @@ export default class Soundscape {
                     label: "Clone Mood",
                     callback: (event, button, dialog) => [button.form.elements.moodname.value, button.form.elements.originalmood.value]
                 }
-            }, {parent: this});
+            }, { parent: this });
         } catch {
             return;
         }
@@ -1084,7 +1089,7 @@ export default class Soundscape {
                     label: "New Mood",
                     callback: (event, button, dialog) => button.form.elements.moodname.value
                 }
-            }, {parent: this});
+            }, { parent: this });
         } catch {
             return;
         }
@@ -1102,7 +1107,7 @@ export default class Soundscape {
             content: `Are you sure you want to delete the mood ${name}?`,
             rejectClose: false,
             modal: true
-        }, {parent: this});
+        }, { parent: this });
 
         if (response) {
             await this.deleteMood(moodId);
