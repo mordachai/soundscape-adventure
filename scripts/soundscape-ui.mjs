@@ -419,7 +419,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                             return;
                         }
                         const sound = await this.soundscape.moods[moodId].getSound(soundId);
-                        console.warn(sound);
                         if (sound.type == constants.SOUNDTYPE.SOUNDPADUI) {
                             const i = button.querySelector("i");
                             i.className = "fas fa-stop";
@@ -452,7 +451,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         if (sounds.type == constants.SOUNDTYPE.SOUNDPADUI) {
                             i.className = "fas fa-play";
                             button.dataset.action = "play";
-                            console.warn("Stop sound", sounds)
                             this.soundscape.stopSound(sounds, moodId);
                             return;
                         }
@@ -768,7 +766,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }
     }
     async soundEdit(moodId, soundId, soundType) {
-        console.warn("Editing sound", moodId, soundId, soundType);
         let soundConfig = null;
         if (soundType == constants.SOUNDTYPE.GROUP_LOOP || soundType == constants.SOUNDTYPE.GROUP_RANDOM) {
             soundConfig = await this.soundscape.moods[moodId].getGroup(soundId);
