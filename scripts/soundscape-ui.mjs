@@ -929,7 +929,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         if (filePickerIcon) {
             filePickerIcon.addEventListener("click", ev => {
-                const picker = new FilePicker({
+                const picker = new foundry.applications.apps.FilePicker.implementation({
                     type: "image",                       // image, audio, video, etc.
                     callback: path => {
                         const input = soundEditDialog.element.querySelector("input[name='soundIcon']");
@@ -1174,7 +1174,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         const sound_view = await game.settings.get('soundscape-adventure', "sound-view-type");
 
-        console.warn("Prepared context data for Soundscape UI", selected_mood);
+        //console.warn("Prepared context data for Soundscape UI", selected_mood);
 
         return {
             name: this.soundscape.name,

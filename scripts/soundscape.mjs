@@ -1028,7 +1028,13 @@ export default class Soundscape {
         const orderedMoods = Object.values(this.moods).sort((a, b) => a.name.localeCompare(b.name));
 
         for (const key in orderedMoods) {
-            playlistSounds.appendChild(orderedMoods[key].render(this.id, current_playing));
+            const id = orderedMoods[key].id;
+            try {
+                playlistSounds.appendChild(this.moods[id].render(this.id, current_playing));
+            } catch (error) {
+                console.warn(`Mood ${id} does not have a render method.`);
+                console.warn(error);
+            }
         }
         directoryItem.appendChild(header);
         directoryItem.appendChild(playlistSounds);
@@ -1050,7 +1056,7 @@ export default class Soundscape {
                     label: "Clone Mood",
                     callback: (event, button, dialog) => [button.form.elements.moodname.value, button.form.elements.originalmood.value]
                 }
-            });
+            }, {parent: this});
         } catch {
             return;
         }
@@ -1078,7 +1084,7 @@ export default class Soundscape {
                     label: "New Mood",
                     callback: (event, button, dialog) => button.form.elements.moodname.value
                 }
-            });
+            }, {parent: this});
         } catch {
             return;
         }
@@ -1096,7 +1102,7 @@ export default class Soundscape {
             content: `Are you sure you want to delete the mood ${name}?`,
             rejectClose: false,
             modal: true
-        });
+        }, {parent: this});
 
         if (response) {
             await this.deleteMood(moodId);

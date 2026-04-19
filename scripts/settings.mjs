@@ -110,7 +110,7 @@ async function newsDialog() {
           game.settings.set('soundscape-adventure', "newsDialog", constants.MODULE.version);
         }
       }]
-    });
+    }, {parent: this});
     await dialog.render(true);
     dialog.classList.add("my-package-news");
     const content = dialog.element.querySelector(".window-content");

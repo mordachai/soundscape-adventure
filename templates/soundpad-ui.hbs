@@ -6,23 +6,6 @@
             {{> "modules/soundscape-adventure/templates/soundscape/parts/sound-list.hbs" sound=sound}}
             {{/each}}
         </ul>
-        {{!-- <div class="flexrow">
-            <div class="soundpad-columns" style="display: flex;">
-                {{#each (range 0 (sub columns 1))}}
-                <div class="soundpad-column" style="/*flex: 1;*/ margin: 0 4px;">
-                    {{#each @root.sounds}}
-                    {{#if (inColumn @index @root.buttonsPerColumn @root.columns @../index)}}
-                    <button class="soundpad-btn" data-idx="{{@index}}"
-                        style="background-image: url('{{this.soundIcon}}');"
-                        data-tooltip="{{this.name}} <br /><br /><i>- Left-click to play the sound.<br />- Right-click to display the volume control.</i>">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    {{/if}}
-                    {{/each}}
-                </div>
-                {{/each}}
-            </div>
-        </div> --}}
         {{else}}
         <p>No soundpad sounds available.</p>
         {{/if}}
