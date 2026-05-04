@@ -1,5 +1,6 @@
 import utils from './utils/utils.mjs';
 import constants from './utils/constants.mjs';
+import { playSoundWithFade } from './soundTypeHandlers.mjs';
 
 export class RandomSoundManager {
   constructor() {
@@ -32,7 +33,7 @@ export class RandomSoundManager {
     const key = this._makeKey(playlistId, soundKey);
     const job = this.jobs.get(key);
     if (!job) return;
-    const { from, to, volume, playOnce, soundIds, lastPlayedIndex } = job.config;
+    const { from, to, volume, playOnce, soundIds, fadeIn, fadeOut, lastPlayedIndex } = job.config;
     const playlist = game.playlists.get(playlistId);
     if (!playlist) return;
 
@@ -52,8 +53,9 @@ export class RandomSoundManager {
 
     // Play the sound
 
-    await playlistSound.update({ volume: parseFloat(volume) })
-    await playlist.playSound(playlistSound);
+    //await playlistSound.update({ volume: parseFloat(volume) })
+    await playSoundWithFade(job.config, playlistSound, playlist);
+    //await playlist.playSound(playlistSound);
 
     // Wait for the internal Sound instance to be ready
     const audioSound = playlistSound.sound;
@@ -92,10 +94,17 @@ export class RandomSoundManager {
    * @param {number} volume 
    * @param {boolean} playOnce 
    */
-  start(playlistId, soundIds, from, to, volume = 1.0, playOnce = false) {
+  start(playlistId,soundIds, soundConfig) {
+    //const soundIds = soundConfig.soundIds
+    const from = soundConfig.from
+    const to = soundConfig.to
+    const volume = soundConfig.volume
+    const playOnce = soundConfig.playOnce;
     const isGroup = Array.isArray(soundIds);
     const soundKey = isGroup ? soundIds.join(',') : soundIds;
     const key = this._makeKey(playlistId, soundKey);
+    const fadeOut = soundConfig.fadeOut || 0;
+    const fadeIn = soundConfig.fadeIn || 0;
     if (isGroup && this.jobs.has(key)) {
       return;
     }
@@ -104,7 +113,10 @@ export class RandomSoundManager {
     const config = {
       from, to, volume, playOnce,
       soundIds,
-      lastPlayedIndex: -1
+      fadeIn,
+      fadeOut,
+      lastPlayedIndex: -1,
+
     };
 
     const delay = this._getRandomDelay(from, to);
@@ -122,7 +134,7 @@ export class RandomSoundManager {
     const job = this.jobs.get(key);
     
     if (job) {
-      const { from, to, volume, playOnce, soundIds, lastPlayedIndex } = job.config;
+      const { from, to, volume, playOnce, soundIds, fadeIn, fadeOut, lastPlayedIndex } = job.config;
       clearTimeout(job.timeoutId);
       this.jobs.delete(key);
       const playlist = game.playlists.get(playlistId);
