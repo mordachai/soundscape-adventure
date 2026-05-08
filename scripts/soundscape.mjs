@@ -352,6 +352,22 @@ export default class Soundscape {
                     await this.playSound(groups[i], moodId);
                 }
             }
+
+            // Apply fade-ins now that every sound in the batch is playing.
+            // Foundry's PlaylistSound#sync() rewrites the gain on every update
+            // across the playlist, so ramps scheduled during play() are wiped
+            // by subsequent sounds' playing:true updates.
+            //  await new Promise(r => setTimeout(r, 1000));
+            // for (const sc of sounds) {
+            //     //console.warn("Applying fade in for sound", sc.name);
+            //     const ps = this.playlist.sounds.get(sc.id);
+            //     if (sc.fadeIn) await applyFadeIn(sc, ps);
+            // }
+            // for (const gc of groups) {
+            //     const targetId = gc.type == constants.SOUNDTYPE.GROUP_LOOP ? gc.current : gc.id;
+            //     const ps = this.playlist.sounds.get(targetId);
+            //     if (ps) await applyFadeIn(gc, ps);
+            // }
         }
         //Hooks.call("SoundscapeAdventure-Soundpad-Render");
     }
@@ -634,19 +650,31 @@ export default class Soundscape {
         await handler.stop(soundConfig, context);
     }
 
-    async _playSound(soundConfig, sound) {
-        await sound.load();
-        sound.update({ volume: soundConfig.volume });
-        if (soundConfig.type === constants.SOUNDTYPE.GROUP_LOOP || soundConfig.type === constants.SOUNDTYPE.LOOP) {
-            sound.update({ "repeat": true });
-        } else {
-            sound.update({ "repeat": false });
-        }
-        await this.playlist.playSound(sound);
-        await new Promise(r => setTimeout(r, 0));
-        if (soundConfig.fadeIn > 0) {
-            sound.sound.fade(soundConfig.volume, { duration: soundConfig.fadeIn * 1000, from: 0 })
-        }
+    async _playSound(soundConfig, moodId) {
+        const mood = this.moods[moodId];
+        const handler = getHandler(soundConfig.type);
+        const context = {
+            playlist: this.playlist,
+            playlistId: this.playlistId,
+            mood: mood,
+            moodId: moodId,
+            randomSoundManager: this.randomSoundManager,
+            playFromGroup: this.playFromGroup.bind(this)
+        };
+
+        await handler.play(soundConfig, context);
+        // await sound.load();
+        // sound.update({ volume: soundConfig.volume });
+        // if (soundConfig.type === constants.SOUNDTYPE.GROUP_LOOP || soundConfig.type === constants.SOUNDTYPE.LOOP) {
+        //     sound.update({ "repeat": true });
+        // } else {
+        //     sound.update({ "repeat": false });
+        // }
+        // await this.playlist.playSound(sound);
+        // await new Promise(r => setTimeout(r, 0));
+        // if (soundConfig.fadeIn > 0) {
+        //     sound.sound.fade(soundConfig.volume, { duration: soundConfig.fadeIn * 1000, from: 0 })
+        // }
     }
 
     async playSound(soundConfig, moodId) {
@@ -660,6 +688,7 @@ export default class Soundscape {
         if (soundConfig.volume == 0) {
             ui.notifications.warn(`The Sound ${soundConfig.name} is muted. Change the volume before hitting play.`);
         }
+
 
         // Use the Strategy Pattern - get handler for this sound type
         const handler = getHandler(soundConfig.type);
@@ -686,12 +715,14 @@ export default class Soundscape {
 
     async _playLoopGroup(groupConfig, moodId) {
         const stopSounds = await groupConfig.sounds.filter(el => el.id != groupConfig.current);
-        const playlistSound = this.playlist.sounds.get(groupConfig.current);
+        //const playlistSound = this.playlist.sounds.get(groupConfig.current);
         for (let i = 0; i < stopSounds.length; i++) {
             await this.playlist.stopSound({ id: stopSounds[i].id });
         }
         const soundConfig = await this.moods[moodId].getSound(groupConfig.current);
-        await this._playSound(soundConfig, playlistSound);
+        soundConfig.fadeIn = groupConfig.fadeIn;
+        soundConfig.fadeOut = groupConfig.fadeOut;
+        await this._playSound(soundConfig, moodId);
     }
 
     async changeSoundIntensity(moodId, groupId, value) {
@@ -1187,14 +1218,12 @@ export default class Soundscape {
     }
     // read all ogg, mp3, wav files from a folder and add them to a list of paths to include in the playlist
     async addSoundsToPlaylist(folderPath, loadSubfolders) {
-        console.log("Adding sounds from folder", folderPath, "Subfolders:", loadSubfolders);
         const paths = [];
         const browseOptions = { recursive: loadSubfolders };
         const filePickerResult = await foundry.applications.apps.FilePicker.browse('data', folderPath, browseOptions);
 
         const soundFileRegex = /\.(mp3|ogg|wav)$/i;
         for (const file of filePickerResult.files) {
-            console.log("Found file:", file);
             if (soundFileRegex.test(file)) {
                 paths.push(file);
             }

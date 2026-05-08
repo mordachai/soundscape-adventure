@@ -18,8 +18,6 @@ Hooks.on('deleteCombat', (combat, updateData) => {
 })
 
 
-
-
 /**
  * MODULE HOOKS
  */
@@ -54,6 +52,9 @@ Hooks.on("saveSceneConfig", (sceneConfig, data) => {
         data.flags.myModule.customSetting = true; // Add a custom flag
     }
     return data; // Return the modified data
+});
+Hooks.on("closeSceneConfig", (sheet) => {
+    console.warn("closeSceneConfig", sheet);
 });
 Hooks.on("renderSceneConfig", (app, html, data) => {
     const moduleName = "soundscape-adventure";
@@ -91,17 +92,28 @@ Hooks.on("renderSceneConfig", (app, html, data) => {
     }
 
     // Add tab header
-    const tab_before = html.querySelector('[data-tab="ambience"]');
+    let tab_before = {};
+    if (game.version.includes("14.")) {
+        console.warn("Foundry v14 detected, adjusting scene configuration UI accordingly.");
+        tab_before = html.querySelector('[data-tab="misc"]');
+    } else {
+        tab_before = html.querySelector('[data-tab="ambience"]');
+    }
     const newItem = document.createElement("a");
     newItem.dataset.action = "tab";
     newItem.dataset.group = "sheet";
     newItem.dataset.tab = "music";
-    newItem.innerHTML = `<i class="fa-solid fa-music" inert=""></i>
-        <span>Music</span>`;
+    newItem.innerHTML = `<i class="fa-solid fa-speaker" inert=""></i>
+        <span>Soundscape</span>`;
     tab_before.after(newItem);
 
     // Create tab body
-    const before_body = html.querySelector('[data-application-part="ambience"]');
+    let before_body = {};
+    if (game.version.includes("14.")) {
+        before_body = html.querySelector('[data-application-part="misc"]');
+    } else {
+        before_body = html.querySelector('[data-application-part="ambience"]');
+    }
     const newNode = document.createElement("div");
     newNode.className = "tab";
     newNode.setAttribute("data-group", "sheet");
@@ -485,6 +497,8 @@ Hooks.once('ready', async () => {
     Hooks.call("SoundscapeAdventure-Init");
 
 });
+
+
 
 Hooks.on("getSceneControlButtons", (controls) => {
     //alert("getSceneControlButtons");

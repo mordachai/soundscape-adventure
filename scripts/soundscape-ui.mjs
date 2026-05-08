@@ -867,7 +867,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
 
         //const sounds = this.soundscape.moods[moodId].getSoundByGroup(soundConfig.id);
-        console.warn("SoundConfig", soundConfig)
+        //console.warn("SoundConfig", soundConfig)
         const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { sound: soundConfig, sounds: soundConfig?.sounds, triggers: triggers, groups: this.soundscape.moods[moodId].groups });
         const soundEditDialog = new foundry.applications.api.DialogV2({
             window: { title: "Edit sound" },
