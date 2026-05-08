@@ -37,7 +37,7 @@
 
                 <div class="field">
                     <label for="triggerOn{{ @index }}">On</label>
-                    <select id="triggerOn{{ @index }}" name="triggerOn">
+                    <select id="triggerOn{{ @index }}" name="triggerOn" class="onElement">
                         <option>Select</option>
                         {{#each this.on}}
                         <option value="{{ this.id }}" {{#if this.selected }}selected {{/if}}>{{ this.name }}</option>
@@ -47,7 +47,7 @@
 
                 <div class="field">
                     <label for="triggerEvent{{ @index }}">Event</label>
-                    <select id="triggerEvent{{ @index }}" name="triggerEvent">
+                    <select id="triggerEvent{{ @index }}" name="triggerEvent" class="eventElement">
                         <option>Select</option>
                         {{#each this.events}}
                         <option value="{{ this.id }}" {{#if this.selected }}selected {{/if}}>{{ this.name }}</option>
