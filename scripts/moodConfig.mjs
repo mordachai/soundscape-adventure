@@ -99,11 +99,12 @@ export default class MoodConfig {
         const moodRenderPlayControl = document.createElement('a');
         if (this.status == constants.STATUS.MOOD.PLAYING) {
             moodRenderPlayControl.className = 'soundscape-tab-button mood-control fas fa-stop item-active';
+            moodRenderPlayControl.dataset.tooltip = 'Stop Mood';
         } else {
             moodRenderPlayControl.className = 'soundscape-tab-button mood-control fas fa-play';
+            moodRenderPlayControl.dataset.tooltip = 'Play Mood';
         }
         moodRenderPlayControl.dataset.action = 'playStopMood';
-        moodRenderPlayControl.dataset.tooltip = 'Play Mood';
         moodRenderPlayControl.dataset.soundboardId = id;
         moodRenderPlayControl.dataset.moodId = this.id;
 
