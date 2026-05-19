@@ -28,16 +28,17 @@ export async function playSoundWithFade(soundConfig, sound, playlist) {
     await sound.load();
 
     // foundryVTT suports fade out nativally. We can use that instead of implementing our own fade out logic.
-    console.warn(`Playing sound ${sound.name} with fade out ${soundConfig.fadeOut} and fade in ${soundConfig.fadeIn}`);
     await sound.update({ fade: soundConfig.fadeOut > 0 ? soundConfig.fadeOut * 1000 : null });
-    //console.warn(`Playing sound ${sound.name} with fade out ${soundConfig.fadeOut}`);
 
-    sound.update({ volume: soundConfig.volume });
+    if (soundConfig.fadeIn > 0) {
+        sound.update({ volume: 0 });
+    } else {
+        sound.update({ volume: soundConfig.volume });
+    }
     await playlist.playSound(sound);
+    
     if (soundConfig.fadeIn > 0) {
         await sound.load();
-        // foundry VTT sets gain to default everytime we play a sound.
-        // that requires us to create a custom node to set the gain, this custom node will be the man-in-the-middle that allows the fadein work
         const s = sound.sound;
         const context = s.context;
         const fadeNode = context.createGain();
@@ -51,28 +52,13 @@ export async function playSoundWithFade(soundConfig, sound, playlist) {
         // fade in
         const now = context.currentTime;
         fadeNode.gain.setValueAtTime(0, now);
+        // target is always 1.0 since this is a new gain node, and the foundry gain node is still controlling the overall volume.
+        // potential issue of click sound: https://docs.swmansion.com/react-native-audio-api/docs/effects/gain-node/
         fadeNode.gain.linearRampToValueAtTime(
             1.0,
             now + Number(soundConfig.fadeIn)
         );
-        
-        // const interval = setInterval(() => {
-
-        //     console.warn(
-        //         `Sound ${sound.name}: gain ${fadeNode.gain.value}`
-        //     );
-
-        // }, 1000);
-
-        // setTimeout(() => {
-
-        //     clearInterval(interval);
-
-        //     console.warn(
-        //         `Fade finished in sound ${sound.name}: volume ${fadeNode.gain.value}`
-        //     );
-
-        // }, soundConfig.fadeIn * 1000);
+        sound.update({ volume: soundConfig.volume });
     }
 
     await new Promise(r => setTimeout(r, 0));
@@ -203,23 +189,7 @@ async function stopSoundWithFade(soundConfig, playlistSound, playlist) {
 
     await playlistSound.sound.load();
 
-
-    //if (soundConfig.fadeOut > 0) {
-    // playlistSound.sound.fade(0, {
-    //     duration: soundConfig.fadeOut > 0 ? soundConfig.fadeOut * 1000 : 0,
-    //     from: playlistSound.sound.volume,
-    //     type: "linear"
-    // });
-    // playlistSound.sound.fade(0, {
-    //     duration: soundConfig.fadeOut * 1000,
-    //     from: playlistSound.sound.volume
-    // }).then(async () => {
-    //     console.warn(`Stopped sound ${playlistSound.name}:${playlistSound.volume} with fade out ${soundConfig.fadeOut}`);
-    //     await playlist.stopSound(playlistSound);
-    // });
-    //} //else {
     await playlist.stopSound(playlistSound);
-    //}
 }
 
 /**
