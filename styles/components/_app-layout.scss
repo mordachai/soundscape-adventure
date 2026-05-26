@@ -1,8 +1,16 @@
+.soundscape-ui,
+.soundscape-ui .window-content {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 // Main app grid layout
 .sa-app.library-hidden,
 .sa-app {
   display: grid;
   height: 100%;
+  min-height: 0;
   //background: var(--sa-bg-main);
   color: var(--color-text-primary);
   font-family: var(--font-primary);

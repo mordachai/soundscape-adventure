@@ -13,6 +13,7 @@
     {{!-- <div class="data-drag"> --}}
         <div class="channel-body">
             <div class="icon data-drag">
+                <button class="sound-control sa-btn-simple" data-tooltip="Configuration" data-action="edit-sound">
                 {{#ifNotEquals sound.soundIcon ''}}
                 <img style="width: 26px; height: 26px; box-shadow: rgb(255 255 255 / 2%) 0px 1px 3px 0px, rgb(208 230 251 / 15%) 0px 0px 0px 1px;" src="{{sound.soundIcon}}" >
                 {{else}}
@@ -22,6 +23,7 @@
                 <i class="fas fa-speaker" data-tooltip="Single Sound"></i>
                 {{/if}}
                 {{/ifNotEquals}}
+                </button>
             </div>
             {{!--
         </div> --}}
@@ -42,8 +44,8 @@
             {{/if}}
 
         </div>
-        <button class="sound-control sa-btn-simple" data-tooltip="Configuration" data-action="edit-sound">
+        {{!-- <button class="sound-control sa-btn-simple" data-tooltip="Configuration" data-action="edit-sound">
             <i class="fas fa-cog"></i>
-        </button>
+        </button> --}}
     </div>
 </div>
