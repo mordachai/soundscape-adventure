@@ -58,4 +58,24 @@
         </button>
         {{/if}}
     </footer>
+    {{#if hasCredits}}
+    <br />
+    <hr />
+    <section class="credits">
+    <h3 style="text-align: center">Credits</h3>
+    {{#each credits as |credit|}}
+    <div class="credit-item">
+        <h4 style="text-align: center">{{credit.type}}</h4>
+        
+            <p style="text-align: center">
+                <a href="{{credit.url}}" target="_blank">{{credit.name}}</a>
+            </p>
+            <p style="text-align: center">
+                {{credit.description}}
+            </p>
+        
+    </div>
+    {{/each}}
+    </section>
+    {{/if}}
 </aside>

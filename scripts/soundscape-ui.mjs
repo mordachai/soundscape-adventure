@@ -10,6 +10,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
     scrollTop = 0;
     current_input = "";
     libraryIsOpen = false;
+    hasCredits = false;
 
     static PARTS = {
         // header: { template: '' },
@@ -559,6 +560,20 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             });
         });
 
+        this.element.querySelectorAll(".sa-library-list").forEach(el => {
+            el.addEventListener('dragover', (e) => {
+                const rect = el.getBoundingClientRect();
+                const scrollSpeed = 10;
+                const threshold = 40;
+
+                if (e.clientY < rect.top + threshold) {
+                    el.scrollTop -= scrollSpeed;
+                } else if (e.clientY > rect.bottom - threshold) {
+                    el.scrollTop += scrollSpeed;
+                }
+            });
+        });
+
         // this.element.querySelectorAll('.sound-category').forEach(el => {
         //     const button = el.querySelector(".category-title");
         //     const collapeDiv = el.querySelector(".soundscapeadv-container, .soundpad-list-container");
@@ -1093,7 +1108,11 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             }
             triggers.push(trigger)
         }
-        this.soundscape.moods[moodId].name = elements.moodName.value;
+        if (this.soundscape.moods[moodId].name != elements.moodName.value) {
+            this.soundscape.moods[moodId].name = elements.moodName.value;
+            Hooks.callAll("SoundscapeAdventure-UpdateSidebar", this.soundscape.moods[moodId].name, this.soundscape.moods[moodId]);
+        }
+        
         this.soundscape.saveTrigger(moodId, "mood", triggers);
         this.myRender(true);
     }
@@ -1171,6 +1190,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         const sound_view = await game.settings.get('soundscape-adventure', "sound-view-type");
 
+        const hasCredits = this.soundscape.credits && this.soundscape.credits.length > 0;
+
         //console.warn("Prepared context data for Soundscape UI", selected_mood);
 
         return {
@@ -1182,7 +1203,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             library: library,
             libraryIsOpen: this.libraryIsOpen,
             selected_mood: selected_mood,
-            card_view: sound_view === constants.SOUNDVIEW.CARDVIEW
+            card_view: sound_view === constants.SOUNDVIEW.CARDVIEW,
+            hasCredits: hasCredits,
+            credits: this.soundscape.credits
         };
     }
 

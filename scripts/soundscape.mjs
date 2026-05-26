@@ -31,6 +31,7 @@ export default class Soundscape {
 
     constructor(_path, _type = constants.SOUNDSCAPE_TYPE.LOCAL) {
         this.id = foundry.utils.randomID(16); // temp ID
+        this.credits = null;
         this.path = _path;
         this.type = _type;
         this.status = "offline";
@@ -66,6 +67,10 @@ export default class Soundscape {
         const moods = json.moods;
         this.moodsConfigFile = this.path.split("/").pop();
         this.playlist = await game.playlists.get(json.playlistId);
+
+        if (json?.credits) {
+            this.credits = json.credits;
+        }
 
         if (this.playlist == null) {
             this.playlist = await game.playlists.find(el => el.name == "Soundscape: " + this.name);

@@ -9,7 +9,7 @@
   background-color: var(--button-background-color);
   align-content: start;
   overflow-y: auto;
-  justify-items: center;
+ // justify-items: center;
 
   .channel-body {
     flex: 1;
@@ -83,7 +83,7 @@
 
   // Individual slider group
   .slider-group {
-    height: 80px;
+    height: 100px;
     width: 15px;
     display: flex;
     flex-direction: column;
@@ -140,5 +140,9 @@
     border-right: 1px solid;
     border-bottom: 1px solid;
     background: rgba(0, 0, 0, 0.1);
+  }
+
+  .sound-control {
+    font-size: x-large;
   }
 }
