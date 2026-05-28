@@ -547,7 +547,7 @@ export default class MoodConfig {
                         volume: sound.volume,
                         type: groupType,
                         category: sound.category || "", // Inherit category from sound
-                        soundIcon: 'icons/svg/sound.svg',
+                        soundIcon: '',
                         fadeIn: sound.fadeIn || 0,
                         fadeOut: sound.fadeOut || 0,
                         random: {
@@ -604,7 +604,7 @@ export default class MoodConfig {
                 volume: sound.volume,
                 type: group_type,
                 category: sound.category,
-                soundIcon: 'icons/svg/sound.svg',
+                soundIcon: '',
                 fadeIn: sound.fadeIn,
                 fadeOut: sound.fadeOut,
                 random: {
@@ -625,7 +625,7 @@ export default class MoodConfig {
                 volume: sound.volume,
                 type: group_type,
                 category: sound.category,
-                soundIcon: 'icons/svg/sound.svg',
+                soundIcon: '',
                 fadeIn: sound.fadeIn,
                 fadeOut: sound.fadeOut,
                 random: {
@@ -682,12 +682,19 @@ export default class MoodConfig {
 
     removeGroup(groupId) {
         const index = this.groups.findIndex(el => el.id === groupId);
-        if (index >= 0) {
-            this.groups.splice(index, 1);
-        } else {
+        if (index < 0) {
             ui.notifications.error("Group not found");
             return;
         }
+        // Detach any sounds still attached to this group so they aren't orphaned
+        for (const member of this.groups[index].sounds) {
+            const sound = this.sounds.find(s => s.id === member.id);
+            if (sound) {
+                sound.group = "";
+                sound.volume = 0.0;
+            }
+        }
+        this.groups.splice(index, 1);
         this.has_changes = true;
     }
 

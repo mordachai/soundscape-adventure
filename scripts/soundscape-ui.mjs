@@ -884,22 +884,57 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         //const sounds = this.soundscape.moods[moodId].getSoundByGroup(soundConfig.id);
         //console.warn("SoundConfig", soundConfig)
         const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { sound: soundConfig, sounds: soundConfig?.sounds, triggers: triggers, groups: this.soundscape.moods[moodId].groups });
+        const isGroup = soundType == constants.SOUNDTYPE.GROUP_LOOP
+            || soundType == constants.SOUNDTYPE.GROUP_RANDOM
+            || soundType == constants.SOUNDTYPE.GROUP_SOUNDPAD;
+        const buttons = [
+            {
+                action: "save",
+                label: "Save",
+                callback: (event, button, dialog) => this.updateSound(button.form.elements, soundId, moodId),
+                icon: "fas fa-check"
+            }
+        ];
+        if (isGroup) {
+            buttons.push({
+                action: "delete",
+                label: "Delete Group",
+                icon: "fas fa-trash",
+                callback: () => {
+                    const confirmation_dialog = new foundry.applications.api.DialogV2({
+                        window: { title: "Delete Group" },
+                        content: `<p>Are you sure you want to delete this group? The sounds will be kept but removed from the group.</p>`,
+                        buttons: [
+                            {
+                                action: "yes",
+                                label: "Yes",
+                                callback: async () => {
+                                    await this.soundscape.deleteGroup(moodId, soundId);
+                                    this.myRender(true);
+                                },
+                                icon: "fas fa-check"
+                            },
+                            {
+                                action: "no",
+                                label: "No",
+                                callback: () => { },
+                                icon: "fas fa-times"
+                            }]
+                    });
+                    confirmation_dialog.render(true);
+                }
+            });
+        }
+        buttons.push({
+            action: "cancel",
+            label: "Cancel",
+            callback: () => { },
+            icon: "fas fa-times"
+        });
         const soundEditDialog = new foundry.applications.api.DialogV2({
             window: { title: "Edit sound" },
             content: html_content,
-            buttons: [
-                {
-                    action: "save",
-                    label: "Save",
-                    callback: (event, button, dialog) => this.updateSound(button.form.elements, soundId, moodId),
-                    icon: "fas fa-check"
-                },
-                {
-                    action: "cancel",
-                    label: "Cancel",
-                    callback: () => { },
-                    icon: "fas fa-times"
-                }]
+            buttons: buttons
         });
         await soundEditDialog.render(true);
 
