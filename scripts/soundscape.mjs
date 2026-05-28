@@ -447,11 +447,9 @@ export default class Soundscape {
 
         const groups = await this.moods[moodId].getGroupsToPlay();
         for (let i = 0; i < groups.length; i++) {
-            const soundGroup = await this.moods[moodId].getSound(groups[i].current)
-            if (soundGroup) {
-                //console.warn("stopping group sound", soundGroup);
-                await this.stopSound(soundGroup, moodId);
-            }
+            // Pass the group itself so stopSound dispatches to the group handler
+            // (handlers read group.current / group.sounds - a member sound lacks both).
+            await this.stopSound(groups[i], moodId);
         }
 
         this.randomSoundManager.stopAll();
@@ -613,15 +611,25 @@ export default class Soundscape {
             return;
         }
         const oldVolume = existingConfig.volume;
+        newVolume = parseFloat(newVolume);
 
-        // Modify and get the updated config in one call (no redundant lookup)
+        // Modify and get the updated config in one call (no redundant lookup).
+        // For a group this also updates the volume of every member sound.
         const soundConfig = mood.changeSoundVolume(soundId, newVolume);
         if (!soundConfig) return;
 
-        // Update playlist sound
-        const playlistSound = this.playlist.sounds.get(soundConfig.id);
-        if (playlistSound) {
-            await playlistSound.update({ volume: newVolume });
+        if (Array.isArray(soundConfig.sounds)) {
+            for (const member of soundConfig.sounds) {
+                const playlistSound = this.playlist.sounds.get(member.id);
+                if (playlistSound) {
+                    await playlistSound.update({ volume: newVolume });
+                }
+            }
+        } else {
+            const playlistSound = this.playlist.sounds.get(soundConfig.id);
+            if (playlistSound) {
+                await playlistSound.update({ volume: newVolume });
+            }
         }
 
         // Play/stop logic based on volume change
@@ -655,9 +663,9 @@ export default class Soundscape {
         await handler.stop(soundConfig, context);
     }
 
-    async _playSound(soundConfig, moodId) {
+    async _playSound(soundConfig, moodId, typeOverride = null) {
         const mood = this.moods[moodId];
-        const handler = getHandler(soundConfig.type);
+        const handler = getHandler(typeOverride ?? soundConfig.type);
         const context = {
             playlist: this.playlist,
             playlistId: this.playlistId,
@@ -725,9 +733,16 @@ export default class Soundscape {
             await this.playlist.stopSound({ id: stopSounds[i].id });
         }
         const soundConfig = await this.moods[moodId].getSound(groupConfig.current);
+        if (!soundConfig) return;
         soundConfig.fadeIn = groupConfig.fadeIn;
         soundConfig.fadeOut = groupConfig.fadeOut;
-        await this._playSound(soundConfig, moodId);
+        // The current member sound carries the GROUP_LOOP type, but here it must
+        // play as a single repeating loop - force the loop handler and repeat flag
+        // (when reached directly via playMood/changeSoundIntensity the group handler,
+        // which would normally set repeat, is bypassed).
+        const currentSound = this.playlist.sounds.get(groupConfig.current);
+        if (currentSound) await currentSound.update({ repeat: true });
+        await this._playSound(soundConfig, moodId, constants.SOUNDTYPE.LOOP);
     }
 
     async changeSoundIntensity(moodId, groupId, value) {
@@ -766,60 +781,81 @@ export default class Soundscape {
     }
     //moveSound(data.soundId, data.moodId, event.target.dataset.dropZone, event.target.dataset?.dropZoneCategory)
     async moveSound(soundId, moodId, target, category = 0) {
-        const sounds = [];
-        const sound = await this.moods[moodId].getSound(soundId);
-        let isGroup = false;
-        if (sound?.group != "") {
-            sounds.push(...this.moods[moodId].getSoundByGroup(sound.group));
-            isGroup = true;
-        } else {
-            sounds.push(sound);
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        const targetType = target.toLowerCase();
+
+        // Resolve the dragged item: it may be a whole group (soundId is a group id)
+        // or a single sound. A single sound that belongs to a group is treated as a group move.
+        let group = mood.getGroup(soundId);
+        const sound = await mood.getSound(soundId);
+        if (!group && sound?.group) {
+            group = mood.getGroup(sound.group);
         }
-        if (target.toLowerCase() == constants.SOUNDTYPE.RANDOM) {
+        const isGroup = !!group;
+
+        // Groups can only be dropped on the Loop or Random sections.
+        if (isGroup
+            && targetType != constants.SOUNDTYPE.LOOP
+            && targetType != constants.SOUNDTYPE.RANDOM) {
+            ui.notifications.warn(`You can only move a group to the Loop or Random sections. To move it elsewhere, move the sounds individually.`);
+            return;
+        }
+
+        const sounds = isGroup ? mood.getSoundByGroup(group.id) : (sound ? [sound] : []);
+        if (!isGroup && sounds.length == 0) return;
+
+        if (targetType == constants.SOUNDTYPE.RANDOM) {
+            if (isGroup) {
+                group.type = constants.SOUNDTYPE.GROUP_RANDOM;
+                group.category = category ? category : "";
+            }
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
+                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                        this.playlist.stopSound(s);
+                    }
                     s.update({ repeat: false });
-                }
-                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                    this.playlist.stopSound(s);
                 }
                 sounds[i].repeat = false;
                 sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_RANDOM : constants.SOUNDTYPE.RANDOM;
                 sounds[i].category = category ? category : "";
             }
-        } else if (target.toLowerCase() == constants.SOUNDTYPE.LOOP) {
+        } else if (targetType == constants.SOUNDTYPE.LOOP) {
+            if (isGroup) {
+                group.type = constants.SOUNDTYPE.GROUP_LOOP;
+                group.category = category ? category : "";
+            }
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
+                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                        this.playlist.stopSound(s);
+                    }
                     s.update({ repeat: true });
-                }
-                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                    this.playlist.stopSound(s);
                 }
                 sounds[i].repeat = true;
                 sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_LOOP : constants.SOUNDTYPE.LOOP;
                 sounds[i].category = category ? category : "";
             }
-        } else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPAD) {
+            // Re-pick the current sound for a loop group based on its intensity.
+            if (isGroup) group._adjustIntensity();
+        } else if (targetType == constants.SOUNDTYPE.SOUNDPAD) {
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
-                if (sound.type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                    this.playlist.stopSound(s);
-                }
                 if (s) {
+                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
+                        this.playlist.stopSound(s);
+                    }
                     s.update({ repeat: false });
                 }
                 sounds[i].repeat = false;
-                sounds[i].type = isGroup ? constants.SOUNDTYPE.GROUP_SOUNDPAD : constants.SOUNDTYPE.SOUNDPAD;
+                sounds[i].type = constants.SOUNDTYPE.SOUNDPAD;
                 sounds[i].category = category ? category : "";
             }
-        } else if (target.toLowerCase() == constants.SOUNDTYPE.SOUNDPADUI) {
+        } else if (targetType == constants.SOUNDTYPE.SOUNDPADUI) {
             for (let i = 0; i < sounds.length; i++) {
-                if (isGroup) {
-                    ui.notifications.warn(`You cannot move a group of sounds to the Soundpad UI. Please move them individually.`);
-                    return;
-                }
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
                     s.update({ repeat: false });
@@ -847,6 +883,22 @@ export default class Soundscape {
         //     }
         //     await this.saveMoodsConfig();
         // }
+    }
+
+    async deleteGroup(moodId, groupId) {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        const group = mood.getGroup(groupId);
+        if (!group) {
+            ui.notifications.error(`Cannot delete group ${groupId}. Group not found.`);
+            return;
+        }
+        // stop the group if it's currently playing so the scheduler/playlist clean up
+        if (group.status == constants.STATUS.SOUND.ON) {
+            await this.stopSound(group, moodId);
+        }
+        mood.removeGroup(groupId);
+        await this.saveMoodsConfig();
     }
 
     async addSoundToNewGroup(moodId, soundId, groupName) {

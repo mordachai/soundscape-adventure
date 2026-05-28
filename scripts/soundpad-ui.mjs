@@ -176,7 +176,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                 //currentBar.appendChild(label);
                 const listener = async () => {
                     if (playlistSound) {
-                        this.soundscape.changeSoundVolume(this.soundscape.activeMoodId, sound.id, parseFloat(slider.value));
+                        this.soundscape.changeSoundVolume(this.soundscape.activeMoodId, sound.id, parseFloat(slider.value), sound.type);
                         await playlistSound.update({ volume: parseFloat(slider.value) });
                         volume_value.textContent = `${parseInt(slider.value * 100)} %`;
                     }
@@ -198,7 +198,7 @@ export default class SoundpadUI extends HandlebarsApplicationMixin(ApplicationV2
                         const playlist = this.soundscape.playlist;
                         const sound = await context.sounds.find(s => s.id === dataset.soundId);
                         const playlistSound = await playlist.sounds.find(s => s.id === sound.id);
-                        this.soundscape.changeSoundVolume(this.soundscape.activeMoodId, sound.id, parseFloat(button.value));
+                        this.soundscape.changeSoundVolume(this.soundscape.activeMoodId, sound.id, parseFloat(button.value), sound.type);
                         await playlistSound.update({ volume: parseFloat(button.value) });
                         button.dataset.tooltip = `Volume ${parseInt(button.value * 100)} %`;
                         break;

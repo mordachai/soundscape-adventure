@@ -96,8 +96,9 @@ export class RandomSoundManager {
    */
   start(playlistId,soundIds, soundConfig) {
     //const soundIds = soundConfig.soundIds
-    const from = soundConfig.from
-    const to = soundConfig.to
+    // Groups store their interval under `random` (from/to); single random sounds use top-level from/to.
+    const from = soundConfig.random?.from ?? soundConfig.from
+    const to = soundConfig.random?.to ?? soundConfig.to
     const volume = soundConfig.volume
     const playOnce = soundConfig.playOnce;
     const isGroup = Array.isArray(soundIds);

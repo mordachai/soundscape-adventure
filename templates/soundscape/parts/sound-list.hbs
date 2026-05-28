@@ -2,7 +2,9 @@
     {{#ifNotEquals sound.soundIcon ''}}
     <img src="{{sound.soundIcon}}">
     {{else}}
-    <img src="icons/svg/sound.svg">
+    {{!-- <img src="icons/svg/sound.svg"> --}}
+    <i class="fas fa-speakers" data-tooltip="Group Sound"></i>
+
     {{/ifNotEquals}}
     <span class=" data-drag">{{sound.name}}</span>
     <input type="range" class="volume sound-control" draggable="false" data-action="volume"

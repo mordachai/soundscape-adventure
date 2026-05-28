@@ -31,7 +31,7 @@ export class GroupConfig {
             this.volume = 0.0; // the sound volume
             this.type = 0;
             this.category = 0;
-            this.soundIcon = 'icons/svg/sound.svg';
+            this.soundIcon = '';
             this.fadeIn = 0.0;
             this.fadeOut = 0.0;
             this.random = {
