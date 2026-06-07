@@ -125,7 +125,7 @@
                                         <div class="soundpad-volume-container" draggable="false">
                                             <span class="volume-label">Vol:</span>
                                             <input type="range" min="0" max="1" step="0.05"
-                                                class="soundpad-volume-slider sound-control" value="{{this.volume }}"
+                                                class="sadv soundpad-volume-slider sound-control" value="{{this.volume }}"
                                                 data-sound-id="{{ this.id }}" data-mood-id="{{../../../id}}"
                                                 data-action="volume" draggable="false" />
                                             <span class="volume-value" id="volume-value-{{this.id}}">{{volumeUI
@@ -192,7 +192,7 @@
                                 {{#if (eq this.type 4)}}
                                 <div class="compact-intensity-control">
                                     <i class="fas fa-chart-line intensity-icon" data-tooltip="Intensity"></i>
-                                    <input type="range" class="compact-intensity-slider sound-control" min="0" max="100"
+                                    <input type="range" class="sadv compact-intensity-slider sound-control" min="0" max="100"
                                         step="5" value="{{this.intensity }}" data-mood-id="{{../../../id}}"
                                         data-sound-id="{{ this.id }}" data-action="intensity"
                                         data-group="{{ this.group }}" />
@@ -204,7 +204,7 @@
                                 <div class="compact-volume-control" draggable="false">
                                     <i class="fas {{volumeIcon this.volume}} volume-icon" data-tooltip="Volume"></i>
                                     <input type="range" min="0" max="1" step="0.05"
-                                        class="compact-volume-slider sound-control" value="{{this.volume }}"
+                                        class="sadv compact-volume-slider sound-control" value="{{this.volume }}"
                                         data-sound-id="{{ this.id }}" data-mood-id="{{../../../id}}"
                                         data-action="volume" draggable="false" />
                                     <span class="compact-volume-value volume-value"
