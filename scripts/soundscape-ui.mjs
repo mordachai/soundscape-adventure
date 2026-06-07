@@ -1,4 +1,3 @@
-import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import utils from "./utils/utils.mjs";
 import constants from "./utils/constants.mjs";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
@@ -398,7 +397,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                     //     break;
                     case "volume":
-                        await this.soundscape.changeSoundVolume(moodId, soundId, button.value);
+                        await this.soundscape.changeSoundVolume(moodId, soundId, button.value, soundType);
                         // if (
                         //     ((button.value == 0 && button.dataset.currentValue != 0) || (button.value != 0 && button.dataset.currentValue== 0))
                         //     &&
@@ -661,7 +660,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     async close(options = {}) {
 
-        SoundscapeAdventure.closeUI(this.soundscape.id);
+        // Detach this UI from its soundscape (equivalent to the old
+        // SoundscapeAdventure.closeUI lookup, but without the back-import).
+        if (this.soundscape) this.soundscape.openUI = null;
 
         // Call the original close method
         return super.close(options);

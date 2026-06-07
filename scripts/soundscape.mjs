@@ -611,15 +611,25 @@ export default class Soundscape {
             return;
         }
         const oldVolume = existingConfig.volume;
+        newVolume = parseFloat(newVolume);
 
-        // Modify and get the updated config in one call (no redundant lookup)
+        // Modify and get the updated config in one call (no redundant lookup).
+        // For a group this also updates the volume of every member sound.
         const soundConfig = mood.changeSoundVolume(soundId, newVolume);
         if (!soundConfig) return;
 
-        // Update playlist sound
-        const playlistSound = this.playlist.sounds.get(soundConfig.id);
-        if (playlistSound) {
-            await playlistSound.update({ volume: newVolume });
+        if (Array.isArray(soundConfig.sounds)) {
+            for (const member of soundConfig.sounds) {
+                const playlistSound = this.playlist.sounds.get(member.id);
+                if (playlistSound) {
+                    await playlistSound.update({ volume: newVolume });
+                }
+            }
+        } else {
+            const playlistSound = this.playlist.sounds.get(soundConfig.id);
+            if (playlistSound) {
+                await playlistSound.update({ volume: newVolume });
+            }
         }
 
         // Play/stop logic based on volume change
