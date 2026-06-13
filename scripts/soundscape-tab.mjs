@@ -161,6 +161,8 @@ class SoundscapeTab /*extends SidebarTab*/ {
 
 		// load soundscape
 		let vLoadSoundscapeButton = document.createElement("button");
+		let vLoadSoundscapeIcon = document.createElement("i");
+		vLoadSoundscapeIcon.classList.add("fa-solid", cNoteIcon);
 		vLoadSoundscapeButton.classList.add("create-document", "create-entry");
 		vLoadSoundscapeButton.onclick = async (pEvent, pContext = {}) => {
 
@@ -178,12 +180,14 @@ class SoundscapeTab /*extends SidebarTab*/ {
 					left: 100,   // Position the file picker at the left
 				}).render(true);
 			});
+			// add load icon to the sidebar
+			vLoadSoundscapeButton.removeChild(vLoadSoundscapeIcon);
+			const loadIcon = document.createElement("i");
+			loadIcon.classList.add("fa-solid", "fa-spinner", "fa-spin");
+			vLoadSoundscapeButton.insertBefore(loadIcon, vLoadSoundscapeButton.firstChild);
 			await SoundscapeAdventure.loadSoundscape(path);
 			this.render(true);
 		};
-
-		let vLoadSoundscapeIcon = document.createElement("i");
-		vLoadSoundscapeIcon.classList.add("fa-solid", cNoteIcon);
 
 		let vLoadSoundscapeLabel = document.createElement("label");
 		vLoadSoundscapeLabel.innerHTML = "Load Soundscape";
