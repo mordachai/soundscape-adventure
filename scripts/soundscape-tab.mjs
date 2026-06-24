@@ -169,6 +169,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			const path = await new Promise((resolve, reject) => {
 				new foundry.applications.apps.FilePicker.implementation({
 					type: "file",
+					extensions: [".json"], // soundscapes are JSON config files
 					callback: (path) => {
 						if (path) {
 							resolve(path);

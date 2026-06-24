@@ -1,0 +1,39 @@
+<li class="sa-lib-row">
+    <div class="sa-lib-item {{#if missing}}is-missing{{/if}} {{#if selected}}is-selected{{/if}}" data-id="{{id}}" data-name="{{lname}}" draggable="true">
+    <input type="checkbox" class="sa-lib-item__select" data-action="select" {{#if selected}}checked{{/if}}
+        aria-label="Select">
+    <button type="button" class="sa-lib-item__play" data-action="preview" data-tooltip="Preview">
+        <i class="fas fa-play"></i>
+    </button>
+    <button type="button" class="sa-lib-star {{#if favorite}}is-on{{/if}}" data-action="favorite" data-tooltip="Favorite">
+        <i class="fas fa-star"></i>
+    </button>
+    <div class="sa-lib-item__main">
+        <span class="sa-lib-item__name" data-action="rename" data-tooltip="Double-click to rename">{{name}}</span>
+        <span class="sa-lib-item__path">{{path}}</span>
+    </div>
+    <div class="sa-lib-item__tags">
+        {{#each userTags as |t|}}
+        <span class="sa-lib-chip sa-lib-chip--user">{{t}}<button type="button" class="sa-lib-chip__x"
+                data-action="untag" data-tag-value="{{t}}" data-tooltip="Remove tag">×</button></span>
+        {{/each}}
+        {{#each autoTags as |t|}}
+        <span class="sa-lib-chip sa-lib-chip--auto" data-tooltip="Auto tag (from folder)">{{t}}</span>
+        {{/each}}
+        <button type="button" class="sa-lib-chip sa-lib-chip--add" data-action="add-tag" data-tooltip="Add tag">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    {{#if missing}}
+    <span class="sa-lib-badge sa-lib-badge--{{missingReason}}" data-tooltip="File {{missingReason}}">
+        {{missingReason}}
+    </span>
+    {{/if}}
+    <button type="button" class="sa-lib-item__pl" data-action="add-to-playlist" data-tooltip="Add to playlist">
+        <i class="fas fa-list-music"></i>
+    </button>
+    <button type="button" class="sa-lib-item__remove" data-action="remove" data-tooltip="Remove from library">
+        <i class="fas fa-trash"></i>
+    </button>
+    </div>
+</li>

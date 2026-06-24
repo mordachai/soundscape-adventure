@@ -36,11 +36,13 @@
             </div>
 
             {{#if (eq sound.type 4)}}
+            {{#ifNotEquals sound.playMode "sequential"}}
             <div class="slider-group">
                 <input type="range" class="sadv volume sound-control" min="0" max="100" step="5" value="{{sound.intensity }}"
                     data-action="intensity" data-tooltip="Intensity {{sound.intensity}}%" draggable="false"
                     orient="vertical" />
             </div>
+            {{/ifNotEquals}}
             {{/if}}
 
         </div>

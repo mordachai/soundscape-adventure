@@ -45,6 +45,14 @@ const SOUNDVIEW = {
     MIXERVIEW: 1
 }
 
+// Playback modes for loop groups (GROUP_LOOP).
+// INTENSITY (default/legacy): an intensity bar picks which member sound loops.
+// SEQUENTIAL: members play one after another in order, looping back to the first.
+const GROUPLOOPMODE = {
+    INTENSITY: "intensity",
+    SEQUENTIAL: "sequential"
+}
+
 const SOUNDSCAPE_TYPE = {
     LOCAL: 0,
     REMOTE_S3: 1
@@ -56,7 +64,8 @@ const STORAGETRIGGERSETTINGS = "soundscape-adventure.triggerSettings";
 
 const MODULE = {
     name: "soundscape-adventure",
-    version: "5.1.0"
+    version: "6.0.0",
+    issuesUrl: "https://github.com/piecesofcodecom/soundscape-adventure/issues"
 }
 
 export default {
@@ -68,5 +77,6 @@ export default {
     PREFIX,
     STORAGETRIGGERSETTINGS,
     MODULE,
-    SOUNDVIEW
+    SOUNDVIEW,
+    GROUPLOOPMODE
   };

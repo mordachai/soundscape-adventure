@@ -23,6 +23,9 @@ class SoundConfig {
             this.playOnce = Object.hasOwn(obj, 'playOnce') ? obj.playOnce : false
         this.category = Object.hasOwn(obj, 'category') ? obj.category : ""
         this.soundIcon = Object.hasOwn(obj, 'soundIcon') ? obj.soundIcon : "";
+        // v4: stable global id of the source sound in the Sound Library. The join
+        // key during migration is `path`; afterwards libraryId is the source of truth.
+        this.libraryId = Object.hasOwn(obj, 'libraryId') ? obj.libraryId : "";
     }
 }
 
@@ -170,32 +173,9 @@ export default class MoodConfig {
             }
         }
 
-        // validates if all sounds in the playlist are in the mood
-        const plSounds = Array.from(playlist.sounds)
-        for (let i = 0; i < plSounds.length; i++) {
-            const sound = this.sounds.find(el => el.path == plSounds[i].path);
-            if (!sound) {
-                this.sounds.push(new SoundConfig({
-                    id: plSounds[i].id,
-                    _id: plSounds[i].id,
-                    status: constants.STATUS.SOUND.OFF,
-                    group: "",
-                    name: plSounds[i].name,
-                    description: "",
-                    path: plSounds[i].path,
-                    repeat: false,
-                    volume: "0.0",
-                    type: constants.SOUNDTYPE.SOUNDPAD,
-                    intensity: "",
-                    to: 0,
-                    from: 0,
-                    fadeIn: 0,
-                    fadeOut: 0,
-                    playOnce: false,
-                    category: ""
-                }));
-            }
-        }
+        // v4: the mood only holds the sounds it actually uses. Playlist sounds that
+        // aren't referenced by any mood are NOT dumped in here anymore — the global
+        // Sound Library is the source of truth for browsing/adding sounds.
         return;
     }
 
@@ -312,6 +292,44 @@ export default class MoodConfig {
             return [...sounds, ...group_sounds];
         }
         return this.sounds.filter(obj => obj.category == category);
+    }
+
+    /** True if this mood already contains a sound from the given library entry. */
+    hasSoundFromLibrary(libraryId, path) {
+        return this.sounds.some(s => (libraryId && s.libraryId === libraryId) || s.path === path);
+    }
+
+    /**
+     * v4: add a sound sourced from the global library to this mood.
+     * @param {object} opts {playlistSoundId, libraryId, name, path, type, category}
+     * @returns {SoundConfig}
+     */
+    addLibrarySound({ playlistSoundId, libraryId, name, path, type, category = "" }) {
+        const sc = new SoundConfig({
+            id: playlistSoundId,
+            _id: playlistSoundId,
+            libraryId,
+            status: constants.STATUS.SOUND.OFF,
+            group: "",
+            name,
+            description: "",
+            path,
+            repeat: type === constants.SOUNDTYPE.LOOP,
+            volume: 0,
+            type,
+            intensity: ""
+        });
+        this.sounds.push(sc);
+        this.has_changes = true;
+        return sc;
+    }
+
+    /** v4: remove a sound entry from this mood (and any group it belonged to). */
+    removeSoundEntry(soundId) {
+        this.removeSoundFromAllGroups(soundId);
+        const i = this.sounds.findIndex(s => s.id === soundId);
+        if (i >= 0) this.sounds.splice(i, 1);
+        this.has_changes = true;
     }
 
     getSound(soundId) {
@@ -708,6 +726,21 @@ export default class MoodConfig {
         const group = this.groups.find(g => g.id === groupId);
         if (group) {
             group.setIntensity(value);
+            this.has_changes = true;
+        }
+        return group || null;
+    }
+
+    /**
+     * Set the playback mode of a loop group (intensity vs sequential).
+     * @param {string} groupId - The group ID
+     * @param {string} mode - constants.GROUPLOOPMODE value
+     * @returns {GroupConfig|null} The modified group, or null if not found
+     */
+    setGroupPlayMode(groupId, mode) {
+        const group = this.groups.find(g => g.id === groupId);
+        if (group) {
+            group.setPlayMode(mode);
             this.has_changes = true;
         }
         return group || null;

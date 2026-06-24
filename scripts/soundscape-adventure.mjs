@@ -132,6 +132,30 @@ class SoundscapeAdventure {
         await game.settings.set('soundscape-adventure', 'soundscapes', soundscapes.join(";"));
     }
 
+    /**
+     * Live sync: when the global library changes (e.g. a sound is renamed), pull
+     * the new names into every loaded soundscape and re-render any open window —
+     * no reload needed. Triggered by the SoundscapeAdventure-Library-Updated hook.
+     */
+    async syncAllNamesFromLibrary() {
+        for (const id in this.soundscapes) {
+            const soundscape = this.soundscapes[id];
+            const changed = await soundscape.syncNamesFromLibrary();
+            if (changed && soundscape.openUI) soundscape.openUI.render(true);
+        }
+    }
+
+    /** Run the v4 validator across all loaded soundscapes and log a report. */
+    validateAll() {
+        const reports = Object.values(this.soundscapes).map(s => s.validateV4());
+        console.log("%cSoundscape v4 validation", "font-weight:bold;font-size:1.1em");
+        for (const r of reports) {
+            console.log(`${r.ok ? "✅" : "⚠️"} ${r.name} (v${r.version}) — ${r.totalSounds} mood sound(s), ${r.playlistSounds} in playlist`);
+            for (const i of r.issues) console.log("    • " + i);
+        }
+        return reports;
+    }
+
     // Below are some utility methods for external modules access the soundscapes
     getSoundscapes() {
         return Object.values(this.soundscapes).map(soundscape => soundscape.name);

@@ -1,0 +1,28 @@
+<header class="sa-lib-toolbar">
+    <div class="sa-lib-toolbar__row">
+        <input type="search" class="sa-lib-search" placeholder="Search sounds…" aria-label="Search sounds">
+        <button type="button" class="sa-lib-star sa-lib-star--filter {{#if favoritesOnly}}is-on{{/if}}"
+            data-action="toggle-favorites" data-tooltip="Show favorites only">
+            <i class="fas fa-star"></i>
+        </button>
+        <span class="sa-lib-count">{{shown}} / {{total}}</span>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="add-results"
+            data-tooltip="Add the filtered results to the target playlist">
+            <i class="fas fa-list-music"></i> Add {{shown}}
+        </button>
+    </div>
+
+    <div class="sa-lib-batch" hidden>
+        <span class="sa-lib-batch__count">0 selected</span>
+        <span class="sa-lib-batch__spacer"></span>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="batch-favorite" data-tooltip="Favorite selected"><i class="fas fa-star"></i></button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="batch-unfavorite" data-tooltip="Unfavorite selected"><i class="far fa-star"></i></button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="batch-tag"><i class="fas fa-tag"></i> Tag</button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="batch-untag"><i class="fas fa-tag"></i> Untag</button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="batch-playlist"><i class="fas fa-list-music"></i> Playlist</button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--danger" data-action="batch-remove"><i class="fas fa-trash"></i> Remove</button>
+        <span class="sa-lib-batch__sep"></span>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="select-all">All</button>
+        <button type="button" class="sa-lib-btn sa-lib-btn--ghost" data-action="select-none">Clear</button>
+    </div>
+</header>

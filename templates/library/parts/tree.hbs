@@ -1,0 +1,64 @@
+<div class="sa-lib-tree">
+    <div class="sa-lib-tree__bar">
+        <label class="sa-lib-checkbox" data-tooltip="Show folders/files marked as ignored">
+            <input type="checkbox" class="sa-lib-showignored" {{#if showIgnored}}checked{{/if}}> Show ignored
+        </label>
+    </div>
+    {{#each tree as |row|}}
+    {{#if row.isDir}}
+    {{#if row.ignored}}
+    <div class="sa-lib-tree__dir is-ignored" style="padding-left:{{row.indent}}px" data-path="{{row.path}}">
+        <i class="fas fa-ban sa-lib-tree__chevron"></i>
+        <i class="fas fa-folder"></i>
+        <span class="sa-lib-tree__name">{{row.name}}</span>
+        <span class="sa-lib-tree__ignored-label">ignored</span>
+        <button type="button" class="sa-lib-tree__restore" data-action="restore-folder" data-path="{{row.path}}"
+            data-tooltip="Stop ignoring this folder"><i class="fas fa-rotate-left"></i></button>
+    </div>
+    {{else}}
+    <div class="sa-lib-tree__dir" style="padding-left:{{row.indent}}px" data-action="toggle-dir" data-path="{{row.path}}">
+        <i class="fas {{#if row.collapsed}}fa-chevron-right{{else}}fa-chevron-down{{/if}} sa-lib-tree__chevron"></i>
+        <i class="fas fa-folder"></i>
+        <span class="sa-lib-tree__name">{{row.name}}</span>
+        <span class="sa-lib-tree__count">{{row.count}}</span>
+        <button type="button" class="sa-lib-tree__folder-pl" data-action="folder-to-playlist" data-path="{{row.path}}"
+            data-tooltip="Add folder to playlist"><i class="fas fa-list-music"></i></button>
+        <button type="button" class="sa-lib-tree__folder-remove" data-action="remove-folder" data-path="{{row.path}}"
+            data-tooltip="Remove folder"><i class="fas fa-trash"></i></button>
+    </div>
+    {{/if}}
+    {{else}}
+    {{#if row.ignored}}
+    <div class="sa-lib-tree__file is-ignored" style="padding-left:{{row.indent}}px" data-path="{{row.path}}">
+        <i class="fas fa-ban"></i>
+        <span class="sa-lib-tree__name">{{row.name}}</span>
+        <span class="sa-lib-tree__ignored-label">ignored</span>
+        <button type="button" class="sa-lib-tree__restore" data-action="restore-file" data-full="{{row.fullPath}}"
+            data-tooltip="Stop ignoring this file"><i class="fas fa-rotate-left"></i></button>
+    </div>
+    {{else}}
+    <div class="sa-lib-tree__file {{#if row.missing}}is-missing{{/if}}" style="padding-left:{{row.indent}}px" data-id="{{row.id}}" data-path="{{row.path}}" draggable="true">
+        <button type="button" class="sa-lib-item__play" data-action="preview" data-tooltip="Preview">
+            <i class="fas fa-play"></i>
+        </button>
+        <button type="button" class="sa-lib-star {{#if row.favorite}}is-on{{/if}}" data-action="favorite"
+            data-tooltip="Favorite">
+            <i class="fas fa-star"></i>
+        </button>
+        <span class="sa-lib-tree__name">{{row.name}}</span>
+        {{#if row.missing}}
+        <span class="sa-lib-badge sa-lib-badge--{{row.missingReason}}">{{row.missingReason}}</span>
+        {{/if}}
+        <button type="button" class="sa-lib-item__pl" data-action="add-to-playlist" data-tooltip="Add to playlist">
+            <i class="fas fa-list-music"></i>
+        </button>
+        <button type="button" class="sa-lib-item__remove" data-action="remove" data-tooltip="Remove from library">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+    {{/if}}
+    {{/if}}
+    {{else}}
+    <div class="sa-lib-empty">No sounds. Use “Import” to add your audio library.</div>
+    {{/each}}
+</div>

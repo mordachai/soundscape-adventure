@@ -1,5 +1,6 @@
 import utils from "./utils/utils.mjs";
 import constants from "./utils/constants.mjs";
+import { openLibrary } from "./soundscape-library.mjs";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
 
 export default class SoundscapeUI extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -137,7 +138,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             d.callbacks = {
                 dragstart: this._onDragStart.bind(this),
                 dragover: this._onDragOver.bind(this),
-                drop: this._onDrop.bind(this),
+                // Drop is handled by the explicit per-".drop-zone" listeners attached
+                // in _onRender. Binding it here too made a single drop fire twice.
             };
             return new foundry.applications.ux.DragDrop(d);
         });
@@ -168,12 +170,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     _onDragStart(event) {
         const div = event.target.closest(".sa-dataset");
-        const dragData = {
-            type: "sound",
-            soundId: div.dataset?.soundId,
-            moodId: div.dataset?.moodId,
-
-        };
+        const dragData = div.dataset?.fromLibrary
+            ? { type: "library", libraryId: div.dataset.libraryId, moodId: div.dataset.moodId }
+            : { type: "sound", soundId: div.dataset?.soundId, moodId: div.dataset?.moodId };
         event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
     }
 
@@ -183,9 +182,21 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
     _onDrop(event, element) {
         event.preventDefault();
+        // A single drop can reach _onDrop more than once (nested .drop-zones bubble
+        // the same event, plus the DragDrop framework). Handle each drop only once.
+        if (event.__saDropHandled) return;
+        event.__saDropHandled = true;
         const dropZone = event.target.closest('.drop-zone');
         if (dropZone.dataset.dropZoneType) {
             const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+            if (data.type === "library") {
+                // New sound coming from the global library (this window or the
+                // standalone Library app) → create it in the displayed mood.
+                const type = parseInt(dropZone.dataset.dropZoneType);
+                const moodId = data.moodId || this.currentMoodOnUI;
+                this.soundscape.addLibrarySoundToMood(moodId, data.libraryId, type, dropZone.dataset?.dropZoneCategory);
+                return; // addLibrarySoundToMood saves + re-renders
+            }
             this.soundscape.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
             this.soundscape.markMoodAsChanged(data.moodId);
         }
@@ -339,9 +350,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     case "cloneMood":
                         await this.soundscape.dialogCloneMood();
                         break;
-                    case "showLibrary":
-                        this.libraryIsOpen = !this.libraryIsOpen;
-                        break;
+                    case "openLibrary":
+                        openLibrary();
+                        return;
                     case "deleteMood":
                         if (moodId == this.currentMoodOnUI) {
                             this.currentMoodOnUI = null;
@@ -413,6 +424,10 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         this.soundEdit(moodId, soundId, soundType);
                         return;
                         break;
+                    case "remove-sound":
+                        await this.soundscape.removeSoundFromMood(moodId, soundId);
+                        this.myRender(true);
+                        return;
                     case "play":
                         if (!this.soundscape.moods[moodId].isPlaying()) {
                             ui.notifications.warn("You need to start the mood before you can play a soundpad sound.");
@@ -1187,6 +1202,10 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         if (elements?.soundIcon?.value) {
             await this.soundscape.updateSoundIcon(moodId, soundId, elements.soundIcon.value);
         }
+        // Loop groups expose a playback mode (intensity vs sequential).
+        if (elements?.playMode) {
+            await this.soundscape.setGroupPlayMode(moodId, soundId, elements.playMode.value);
+        }
         this.myRender(true);
     }
 
@@ -1218,11 +1237,8 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             }
         }
 
-        // Get library sounds for the selected mood
-        let library = [];
-        if (this.currentMoodOnUI && this.soundscape.moods[this.currentMoodOnUI]) {
-            library = this.soundscape.moods[this.currentMoodOnUI].getLibrarySounds();
-        }
+        // v4: sounds are added by dragging from the standalone Sound Library window
+        // into a mood — there's no embedded library panel here anymore.
 
         const sound_view = await game.settings.get('soundscape-adventure', "sound-view-type");
 
@@ -1236,8 +1252,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             soundscapeId: this.soundscape.id,
             off_visible: this.soundscape.visible_off_sounds,
             activeMood: this.currentMoodOnUI,
-            library: library,
-            libraryIsOpen: this.libraryIsOpen,
             selected_mood: selected_mood,
             card_view: sound_view === constants.SOUNDVIEW.CARDVIEW,
             hasCredits: hasCredits,

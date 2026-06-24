@@ -1,0 +1,37 @@
+<div class="sa-lib-synonyms">
+    <div class="sa-syn__bar">
+        <input type="text" class="sa-syn__new-canon" placeholder="new or existing tag…" list="sa-syn-tags" aria-label="Canonical tag">
+        <input type="text" class="sa-syn__new-syns" placeholder="synonyms (optional, comma-separated)…" aria-label="Synonyms">
+        <button type="button" class="sa-syn__addgroup" data-action="syn-add-group"><i class="fas fa-plus"></i> Add</button>
+        <datalist id="sa-syn-tags">
+            {{#each allTagsList as |t|}}<option value="{{t}}"></option>{{/each}}
+        </datalist>
+    </div>
+
+    <p class="sa-syn__hint">
+        <i class="fas fa-circle-info"></i>
+        <span>Synonyms expand search and group sounds under the canonical tag. After adding or editing a group,
+            click <b>Refresh</b> to (re)apply name-based tags to existing sounds.</span>
+    </p>
+
+    <div class="sa-syn__list">
+        {{#each synonymGroups as |g|}}
+        <div class="sa-syn__group">
+            <span class="sa-syn__canon">{{g.canonical}}</span>
+            <i class="fas fa-arrow-right-long sa-syn__arrow"></i>
+            <div class="sa-syn__syns">
+                {{#each g.synonyms as |s|}}
+                <span class="sa-syn__chip">{{s}}<button type="button" class="sa-syn__x" data-action="syn-remove"
+                        data-canon="{{g.canonical}}" data-syn="{{s}}" data-tooltip="Remove synonym">×</button></span>
+                {{/each}}
+                <button type="button" class="sa-syn__chip sa-syn__chip--add" data-action="syn-add"
+                    data-canon="{{g.canonical}}" data-tooltip="Add synonym"><i class="fas fa-plus"></i></button>
+            </div>
+            <button type="button" class="sa-syn__del" data-action="syn-del-group" data-canon="{{g.canonical}}"
+                data-tooltip="Remove this group"><i class="fas fa-trash"></i></button>
+        </div>
+        {{else}}
+        <div class="sa-lib-empty">No synonyms yet. Add a group above, or right-click a tag in the General tab.</div>
+        {{/each}}
+    </div>
+</div>

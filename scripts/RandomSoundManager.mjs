@@ -33,7 +33,7 @@ export class RandomSoundManager {
     const key = this._makeKey(playlistId, soundKey);
     const job = this.jobs.get(key);
     if (!job) return;
-    const { from, to, volume, playOnce, soundIds, fadeIn, fadeOut, lastPlayedIndex } = job.config;
+    const { from, to, volume, playOnce, soundIds, fadeIn, fadeOut, lastPlayedIndex, sequential } = job.config;
     const playlist = game.playlists.get(playlistId);
     if (!playlist) return;
 
@@ -41,7 +41,11 @@ export class RandomSoundManager {
     let nextIndex = 0;
 
     if (Array.isArray(soundIds)) {
-      nextIndex = this._getRandomIndexExcluding(soundIds.length, lastPlayedIndex);
+      // Sequential loop groups walk the members in order and wrap back to the
+      // first; random groups pick any member except the one just played.
+      nextIndex = sequential
+        ? (lastPlayedIndex + 1) % soundIds.length
+        : this._getRandomIndexExcluding(soundIds.length, lastPlayedIndex);
       nextSoundId = soundIds[nextIndex];
       job.config.lastPlayedIndex = nextIndex;
     } else {
@@ -74,11 +78,13 @@ export class RandomSoundManager {
     }
 
     if (playOnce) {
-      
+
       this.stop(playlistId, soundKey);
     } else {
-      const delay = this._getRandomDelay(from, to);
-      
+      // Sequential playback chains the next member as soon as the current one
+      // ends (no gap); random playback waits a random interval in between.
+      const delay = sequential ? 0 : this._getRandomDelay(from, to);
+
       const timeoutId = setTimeout(() => this._playSound(playlistId, soundKey), delay);
       job.timeoutId = timeoutId;
     }
@@ -106,6 +112,8 @@ export class RandomSoundManager {
     const key = this._makeKey(playlistId, soundKey);
     const fadeOut = soundConfig.fadeOut || 0;
     const fadeIn = soundConfig.fadeIn || 0;
+    // Loop groups set to sequential play their members in order with no interval.
+    const sequential = soundConfig.playMode === constants.GROUPLOOPMODE.SEQUENTIAL;
     if (isGroup && this.jobs.has(key)) {
       return;
     }
@@ -117,10 +125,11 @@ export class RandomSoundManager {
       fadeIn,
       fadeOut,
       lastPlayedIndex: -1,
+      sequential,
 
     };
 
-    const delay = this._getRandomDelay(from, to);
+    const delay = sequential ? 0 : this._getRandomDelay(from, to);
     const timeoutId = setTimeout(() => this._playSound(playlistId, soundKey), delay);
 
     this.jobs.set(key, { timeoutId, config });

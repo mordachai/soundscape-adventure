@@ -56,8 +56,10 @@
     letter-spacing: -.01em;
   }
 
-  h2 .date {
+  h2 span.date {
     color: var(--color-accent);
+    font-size: small;
+    margin-left: 1em;
   }
 
   h3 {

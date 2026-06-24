@@ -52,6 +52,23 @@
         </div>
     </section>
 
+    {{#if (eq sound.type 4)}}
+    <section class="editor-section">
+        <h2>Playback</h2>
+        <div class="field">
+            <label>Loop Mode</label>
+            <select name="playMode" id="playMode">
+                <option value="intensity" {{#ifEquals sound.playMode "intensity"}}selected{{/ifEquals}}>
+                    Intensity (bar selects the sound)
+                </option>
+                <option value="sequential" {{#ifEquals sound.playMode "sequential"}}selected{{/ifEquals}}>
+                    Sequential (play sounds in order, then repeat)
+                </option>
+            </select>
+        </div>
+    </section>
+    {{/if}}
+
     <section class="editor-section">
         <h2>Timing</h2>
 

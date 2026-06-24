@@ -1,0 +1,26 @@
+<aside class="sa-lib-tagpanel">
+    <header class="sa-lib-tagpanel__head">
+        <h3>Tags</h3>
+        {{#if hasActiveTags}}
+        <button type="button" class="sa-lib-tagpanel__clear" data-action="clear-tags" data-tooltip="Clear tag filters">
+            <i class="fas fa-xmark"></i> {{activeTagCount}}
+        </button>
+        {{/if}}
+    </header>
+
+    <input type="search" class="sa-lib-tagfilter" placeholder="Filter tags…" aria-label="Filter tags">
+
+    <div class="sa-lib-autotag" data-tooltip="Add this tag to every sound whose file name contains the word">
+        <input type="text" class="sa-lib-autotag__input" placeholder="Tag by name…" aria-label="Auto-tag by name">
+        <button type="button" class="sa-lib-autotag__apply" data-action="apply-autotag">Apply</button>
+    </div>
+
+    <div class="sa-lib-tagpanel__list">
+        {{#each tags as |tag|}}
+        <button type="button" class="sa-lib-tag {{#if tag.active}}is-active{{/if}}" data-tag="{{tag.name}}"
+            data-tagname="{{tag.name}}" data-tooltip="Click to filter · right-click for synonyms">{{tag.name}}</button>
+        {{else}}
+        <div class="sa-lib-tagpanel__empty">No tags yet</div>
+        {{/each}}
+    </div>
+</aside>
