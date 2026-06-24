@@ -9,7 +9,7 @@
         <li class="sa-mood {{#if mood.is_selected}}active{{/if}} mood-action" data-mood-id="{{ mood.id }}"
             data-action="viewMood" data-soundscape-id="{{ @root.soundscapeId}}">
             <span class="name">
-                <a class="">{{mood.name}}</a>
+                <a class="mood-name">{{mood.name}}</a>
             </span>
             <div class="sa-mood-actions">
                 {{#if mood.has_changes}}
@@ -46,17 +46,10 @@
         <button class="sa-btn secondary mood-action" data-type="mood" data-action="cloneMood" data-tooltip="SAADV.MOOD.Clone">
             <i class="fa fa-copy"></i>
         </button>
-         {{#if libraryIsOpen}}
-         <button class="sa-btn selected secondary mood-action" data-type="mood" data-action="showLibrary"
-            data-tooltip="SAADV.LIBRARY.ShowHidden">
-            <i class="fa fa-list"></i>
+        <button class="sa-btn secondary mood-action" data-type="mood" data-action="openLibrary"
+            data-tooltip="Open the Sound Library">
+            <i class="fa fa-list-music"></i>
         </button>
-         {{else}}
-        <button class="sa-btn secondary mood-action" data-type="mood" data-action="showLibrary"
-            data-tooltip="SAADV.LIBRARY.ShowHidden">
-            <i class="fa fa-list"></i>
-        </button>
-        {{/if}}
     </footer>
     {{#if hasCredits}}
     <br />

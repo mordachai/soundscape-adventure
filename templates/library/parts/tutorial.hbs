@@ -1,0 +1,83 @@
+<div class="sa-lib-tutorial">
+    <div class="sa-tut">
+        <h2 class="tutorial-header">How the Sound Library works</h2>
+        <p>The Sound Library is a single <b>source of truth</b> for all your audio. It lives in
+            <code>modules/soundscape-adventure/storage/</code> and is shared across every world — organize once,
+            use everywhere. Soundscapes <i>consume</i> sounds from here.</p>
+
+        <h3><i class="fas fa-folder-plus"></i> Importing</h3>
+        <ul>
+            <li><b>Import</b> picks a folder and scans it recursively, adding every audio file it finds.</li>
+            <li>That folder is remembered as a <b>root</b> (manage them under <b>Roots</b>). You can import several roots.</li>
+            <li>Subfolder names become <b>auto-tags</b>. A file in <code>environment/nature/forest</code> gets the
+                tags <code>environment</code>, <code>nature</code> and <code>forest</code> automatically.</li>
+        </ul>
+
+        <h3><i class="fas fa-tags"></i> Tags &amp; filtering</h3>
+        <ul>
+            <li>Two kinds of tags: <b>your tags</b> (free, editable) and <b>auto-tags</b> (from folders, read-only).</li>
+            <li>The left <b>Tags</b> panel filters the list; combine with the text search and the <i class="fas fa-star"></i> favorites toggle.</li>
+            <li>Because auto-tags carry the whole folder chain, filtering by a parent (e.g. <code>nature</code>) already
+                finds everything beneath it (<code>forest</code>, <code>winter</code>…).</li>
+            <li>Double-click a sound's name to rename it; use the <i class="fas fa-plus"></i> chip to add a tag, the
+                <b>×</b> on a chip to remove one.</li>
+        </ul>
+
+        <h3><i class="fas fa-wand-magic-sparkles"></i> Auto-tag by name</h3>
+        <p>In the Tags panel, type a word in <b>“Tag by name”</b> and click <b>Apply</b>: the tag is added to every
+            sound whose file name contains that word. Matching is whole-word and separator-aware —
+            <code>wind</code> matches <code>wind.mp3</code>, <code>strong-wind.mp3</code>, <code>wind_gust</code>
+            (anything that isn't a letter is a separator). It won't match glued names like <code>windmill</code>.</p>
+
+        <h3><i class="fas fa-diagram-project"></i> Synonyms</h3>
+        <ul>
+            <li>Group equivalent words under one canonical tag, e.g. <code>rain</code> → <code>raining</code>,
+                <code>rainy</code>, <code>shower</code>. This covers both word variations and true synonyms.</li>
+            <li>Manage them in the <b>Synonyms</b> tab, or <b>right-click any tag</b> for a quick edit.</li>
+            <li>Synonyms are used when <b>filtering</b> (filtering <code>rain</code> also finds <code>shower</code>)
+                and when <b>auto-tagging</b> by name.</li>
+            <li>They never rewrite your tags — they only broaden matching (better recall).</li>
+        </ul>
+
+        <h3><i class="fas fa-rotate"></i> Refresh vs Import</h3>
+        <ul>
+            <li><b>Import</b> = teach the library a new folder.</li>
+            <li><b>Refresh</b> = re-scan the known roots: add new files, re-link moved files, flag missing ones, and
+                <b>re-apply your synonym rules by name</b> (so new files get the right tags automatically).</li>
+        </ul>
+
+        <h3><i class="fas fa-triangle-exclamation"></i> Missing &amp; duplicates</h3>
+        <ul>
+            <li>Refresh marks files that no longer exist as <b>missing</b> and tries to recover moved ones. Use
+                <b>Clean missing</b> to drop the leftovers.</li>
+            <li><b>Duplicates</b> scans by audio <b>content</b> (hash), so identical files are found even with
+                different names. Check the copies to remove; <i>Ignore</i> keeps them out of future imports.</li>
+            <li><b>Folders</b> tab: remove or <b>ignore</b> a folder/file. Ignored items are hidden (toggle
+                <b>Show ignored</b>) and never re-imported, with a restore option.</li>
+        </ul>
+
+        <h3><i class="fas fa-compact-disc"></i> Using the library with soundscapes</h3>
+        <ul>
+            <li><b>Drag &amp; drop</b>: open a soundscape and a mood, then drag a sound from this window onto a
+                section (Loop / Random / Soundpad). The sound is added to that mood, and its
+                <b>PlaylistSound is created on demand</b> — only sounds you actually use end up in the soundscape and
+                its playlist.</li>
+            <li>Dropping a sound that's already in the mood does nothing (no duplicates).</li>
+            <li><b>Renaming</b>: the library is the source of truth for names. Rename a sound here and it updates in
+                every soundscape that uses it — live in any open soundscape window, and on reload otherwise.</li>
+        </ul>
+
+        <h3><i class="fas fa-list-music"></i> Using the library with playlists (standalone)</h3>
+        <p>The library is fully <b>independent of soundscapes</b>. You can push sounds straight into a regular Foundry
+            <b>playlist</b> with no soundscape involved — ideal for a minimalist setup.</p>
+        <ul>
+            <li>The <i class="fas fa-list-music"></i> button on a sound adds it to a playlist.</li>
+            <li>On the <b>Folders</b> tab, the <i class="fas fa-list-music"></i> button on a folder adds the whole
+                folder (it asks whether to include subfolders).</li>
+            <li><b>“Add N”</b> in the toolbar adds the current filtered results (search + tags) to a playlist.</li>
+            <li>Pick a <b>target playlist</b> in the top bar to send everything there directly; leave it on
+                “ask each time” to choose (or create a new playlist) on each add.</li>
+            <li>Sounds already present in the chosen playlist are skipped — no duplicates.</li>
+        </ul>
+    </div>
+</div>

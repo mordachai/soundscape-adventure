@@ -8,6 +8,9 @@ export class GroupConfig {
             this.name = obj.name;  // sound name
             this.sounds = obj.sounds; //sound id list
             this.intensity = obj.intensity; // if applicabe
+            // Loop-group playback mode. Older JSON files won't have this field, so
+            // default to the legacy intensity-bar behaviour for backward compatibility.
+            this.playMode = obj.playMode ?? constants.GROUPLOOPMODE.INTENSITY;
             this.current = obj.current; //the current sound id playing
             this.status = obj.status; // active or not
             this.volume = obj.volume; // the sound volume
@@ -26,6 +29,7 @@ export class GroupConfig {
             this.name = "";  // sound name
             this.sounds = []; //sound id list
             this.intensity = 0.0; // if applicabe
+            this.playMode = constants.GROUPLOOPMODE.INTENSITY;
             this.current = ""; //the current sound id playing
             this.status = constants.STATUS.SOUND.OFF; // active or not
             this.volume = 0.0; // the sound volume
@@ -73,6 +77,16 @@ export class GroupConfig {
         if (this.type !== constants.SOUNDTYPE.GROUP_LOOP) return;
         this.intensity = newValue;
         this._adjustIntensity();
+    }
+
+    setPlayMode(mode) {
+        if (this.type !== constants.SOUNDTYPE.GROUP_LOOP) return;
+        this.playMode = mode;
+    }
+
+    isSequential() {
+        return this.type === constants.SOUNDTYPE.GROUP_LOOP
+            && this.playMode === constants.GROUPLOOPMODE.SEQUENTIAL;
     }
 
     setVolume(newVolume) {

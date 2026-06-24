@@ -1,0 +1,10 @@
+{{!-- Virtualized list: only the rows in view are rendered (by LibraryApp). --}}
+<div class="sa-lib-list sa-vlist">
+    {{#if listHeight}}
+    <div class="sa-vlist__sizer" style="height:{{listHeight}}px">
+        <ul class="sa-vlist__rows"></ul>
+    </div>
+    {{else}}
+    <div class="sa-lib-empty">No sounds. Use “Import” to add your audio library.</div>
+    {{/if}}
+</div>

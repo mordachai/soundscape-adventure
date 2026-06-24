@@ -31,6 +31,12 @@ Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
     coreInit();
 });
 
+// Live name sync: the global library is the source of truth for sound names, so
+// when it changes, reflect renames in loaded soundscapes (and open windows).
+Hooks.on('SoundscapeAdventure-Library-Updated', () => {
+    SoundscapeAdventure.syncAllNamesFromLibrary();
+});
+
 // Hooks.on('SBAdventureNewMood', (moodName, mood) => {
 //     /*if (sidebar instanceof PlaylistDirectory) {*/
 //     /*}*/
@@ -524,7 +530,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
     controls.sounds.tools["soundpad"] = {
         name: "soundpad",
         title: "Soundpad",
-        icon: "fas fa-list-music",
+        icon: "fas fa-music",
         button: true,
         //toggle: false, // one-time click
         visible: true, // or () => true

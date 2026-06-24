@@ -7,6 +7,9 @@
             <button class="sound-control sa-btn-simple " data-tooltip="Configuration" data-action="edit-sound">
                 <i class="fas fa-cog"></i>
             </button>
+            <button class="sound-control sa-btn-simple" data-tooltip="Remove from mood" data-action="remove-sound">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     </div>
     <!--div class="meta">Solo 24367</div-->
@@ -15,8 +18,10 @@
         data-current-value="{{sound.volume}}" />
 
     {{#if (eq sound.type 4)}}
+    {{#ifNotEquals sound.playMode "sequential"}}
     <input type="range" class="sadv volume sound-control" min="0" max="100" step="5"
         value="{{sound.intensity }}" data-action="intensity"  data-tooltip="Intensity {{sound.intensity}}%" draggable="false" />
+    {{/ifNotEquals}}
     {{/if}}
     {{!-- <input type="range" class="volume" data-tooltip="Intensity" draggable="false" /> --}}
 </div>

@@ -257,7 +257,25 @@ const soundpadHandler = {
  */
 const groupLoopHandler = {
     async play(soundConfig, context) {
-        // Set all sounds in group to repeat
+        // Sequential mode: chain the members one after another, looping back to
+        // the first. Members must not repeat so each one fires its "end" event.
+        if (soundConfig.playMode === constants.GROUPLOOPMODE.SEQUENTIAL) {
+            for (let i = 0; i < soundConfig.sounds.length; i++) {
+                const sound = await context.playlist.sounds.get(soundConfig.sounds[i].id);
+                if (sound) {
+                    sound.update({ "repeat": false });
+                }
+            }
+            const groupOfSounds = soundConfig.sounds.map(sound => sound.id);
+            context.randomSoundManager.start(
+                context.playlistId,
+                groupOfSounds,
+                soundConfig
+            );
+            return;
+        }
+
+        // Intensity mode (default): set all sounds in group to repeat
         for (let i = 0; i < soundConfig.sounds.length; i++) {
             const sound = await context.playlist.sounds.get(soundConfig.sounds[i].id);
             if (sound) {
@@ -269,6 +287,14 @@ const groupLoopHandler = {
     },
 
     async stop(soundConfig, context) {
+        if (soundConfig.playMode === constants.GROUPLOOPMODE.SEQUENTIAL) {
+            const soundIds = soundConfig.sounds.map(s => s.id);
+            context.randomSoundManager.stop(context.playlistId, soundIds);
+            for (const soundId of soundIds) {
+                await context.playlist.stopSound({ id: soundId });
+            }
+            return;
+        }
         const playlistSound = await context.playlist.sounds.get(soundConfig.current);
         await stopSoundWithFade(soundConfig, playlistSound, context.playlist);
     }

@@ -22,7 +22,7 @@ export default class Soundscape {
     moodsConfigFile = "";
     random_idempotency;
     advice;
-    version = 3;
+    version = 4; // current format; init() overrides from the loaded file's version
     visible_off_sounds = false;
     activeMoodId = "";
     openUI = null;
@@ -64,6 +64,7 @@ export default class Soundscape {
         this.playlistId = json?.playlistId;
         this.description = json.description;
         this.created = json.created;
+        this.version = json.version ?? this.version;
         const moods = json.moods;
         this.moodsConfigFile = this.path.split("/").pop();
         this.playlist = await game.playlists.get(json.playlistId);
@@ -102,10 +103,129 @@ export default class Soundscape {
         if (has_changes) {
             await this.saveMoodsConfig();
         }
+
+        // v3 → v4: move to consuming the shared Sound Library. Interactive (asks
+        // the user), so it runs after the moods are loaded.
+        if (this.version < 4) {
+            try {
+                const migrated = await this.migrateToV4(json);
+                if (migrated) {
+                    this.version = 4;
+                    await this.saveMoodsConfig();
+                }
+            } catch (err) {
+                await this._migrationFailed(err, null);
+            }
+        }
+
+        // A v4 soundscape may reference sounds this install's library doesn't
+        // know yet (e.g. it was shared from another world). Transparently import
+        // their source folder(s) as library roots before syncing from it.
+        await this.ensureLibraryRoots();
+
+        // The library is the source of truth for names — pull any renames done
+        // there into this soundscape (and its playlist).
+        await this.syncNamesFromLibrary();
+    }
+
+    /**
+     * Ensure every sound this soundscape uses is backed by the global library.
+     * For any sound the library can't resolve (no matching `libraryId`/path), the
+     * source folder is detected, added as a library root and imported, then each
+     * sound's `libraryId` is (re)linked. A notification names each added folder.
+     * No-op (cheap) once the library already covers every sound.
+     * @returns {Promise<boolean>} true if any new root was imported.
+     */
+    async ensureLibraryRoots() {
+        const lib = game.soundscapeLibrary;
+        if (!lib) return false;
+
+        // Collect the paths of sounds the library can't resolve yet.
+        const danglingPaths = [];
+        for (const key in this.moods) {
+            for (const s of this.moods[key].sounds) {
+                if (!s.path) continue;
+                const known = (s.libraryId && lib.getById(s.libraryId)) || lib.findByPath(s.path);
+                if (!known) danglingPaths.push(s.path);
+            }
+        }
+        if (!danglingPaths.length) return false;
+
+        // Detect the source folder(s) and import them. addRoot() reports whether
+        // the root was genuinely new (so we only announce first-time additions);
+        // importFolder() is idempotent and skips files already in the library.
+        const roots = this._detectRoots(danglingPaths);
+        const added = [];
+        for (const r of roots) {
+            const isNew = lib.addRoot(r);
+            await lib.importFolder(r);
+            if (isNew) added.push(r);
+        }
+
+        // (Re)link each sound to its now-known library entry by path.
+        let changed = false;
+        for (const key in this.moods) {
+            const mood = this.moods[key];
+            for (const s of mood.sounds) {
+                if (s.libraryId && lib.getById(s.libraryId)) continue;
+                const libSound = lib.findByPath(s.path);
+                if (libSound && s.libraryId !== libSound.id) {
+                    s.libraryId = libSound.id;
+                    mood.has_changes = true;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) await this.saveMoodsConfig();
+
+        for (const r of added) {
+            ui.notifications.info(`Sound Library: folder "${r}" was added as a root.`);
+        }
+        return added.length > 0;
+    }
+
+    /**
+     * Update the names of this soundscape's sounds to match the global library
+     * (the source of truth). Renaming a sound in the library reflects here on load
+     * / reload. Updates the SoundConfig, group member names, and the PlaylistSound.
+     */
+    async syncNamesFromLibrary() {
+        const lib = game.soundscapeLibrary;
+        if (!lib) return false;
+        let changed = false;
+
+        for (const key in this.moods) {
+            const mood = this.moods[key];
+            for (const s of mood.sounds) {
+                const libSound = (s.libraryId && lib.getById(s.libraryId)) || lib.findByPath(s.path);
+                if (!libSound || s.name === libSound.name) continue;
+
+                s.name = libSound.name;
+                // Keep group member labels in sync too.
+                for (const g of mood.groups) {
+                    const member = g.sounds?.find(m => m.id === s.id);
+                    if (member) member.name = libSound.name;
+                }
+                // And the underlying PlaylistSound.
+                const ps = this.playlist?.sounds?.get(s.id)
+                    || this.playlist?.sounds?.find(p => p.path === s.path);
+                if (ps && ps.name !== libSound.name) await ps.update({ name: libSound.name });
+
+                mood.has_changes = true;
+                changed = true;
+            }
+        }
+
+        if (changed) await this.saveMoodsConfig();
+        return changed;
     }
 
     async reloadSoundscape() {
         await this.init();
+        // Reflect the refreshed model (e.g. names synced from the library) in any
+        // open window and the sidebar.
+        if (this.openUI) this.openUI.render(true);
+        Hooks.callAll("SoundscapeAdventure-UpdateSidebar", "", "");
     }
 
     async fileExists(path) {
@@ -351,7 +471,10 @@ export default class Soundscape {
 
             const groups = await this.moods[moodId].getGroupsToPlay();
             for (let i = 0; i < groups.length; i++) {
-                if (groups[i].type == constants.SOUNDTYPE.GROUP_LOOP) {
+                // Intensity loop groups play their current member directly; every
+                // other group (random, soundpad, and sequential loop groups) goes
+                // through the type handler.
+                if (groups[i].type == constants.SOUNDTYPE.GROUP_LOOP && !groups[i].isSequential()) {
                     await this._playLoopGroup(groups[i], moodId);
                 } else {
                     await this.playSound(groups[i], moodId);
@@ -481,7 +604,7 @@ export default class Soundscape {
                 created: this.created,
                 description: this.description,
                 playlistId: this.playlistId,
-                version: 3,
+                version: this.version,
                 moods: moodsCopy
             }
             const parts = decodeURIComponent(this.path).split('/');
@@ -752,9 +875,32 @@ export default class Soundscape {
         // setIntensity now returns the group (no redundant lookup)
         const groupConfig = mood.setIntensity(groupId, value);
 
+        // Sequential loop groups ignore intensity entirely.
+        if (groupConfig?.isSequential()) return;
+
         if (mood.isPlaying() && groupConfig) {
             await this._playLoopGroup(groupConfig, moodId);
         }
+    }
+
+    /**
+     * Change the playback mode of a loop group. If the mood is currently playing,
+     * the group is restarted so the new mode takes effect immediately.
+     */
+    async setGroupPlayMode(moodId, groupId, mode) {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+
+        const group = mood.getGroup(groupId);
+        if (!group || group.playMode === mode) return;
+
+        const wasPlaying = mood.isPlaying() && group.status === constants.STATUS.SOUND.ON;
+        if (wasPlaying) await this.stopSound(group, moodId);
+
+        mood.setGroupPlayMode(groupId, mode);
+
+        if (wasPlaying) await this.playSound(group, moodId);
+        await this.saveMoodsConfig();
     }
 
     async updateSoundIcon(moodId, soundId, newIcon) {
@@ -868,6 +1014,265 @@ export default class Soundscape {
                 sounds[i].type = constants.SOUNDTYPE.SOUNDPADUI;
                 sounds[i].category = "";
             }
+        }
+    }
+
+    /**
+     * v4: add a sound from the global Sound Library to a mood. Creates the
+     * PlaylistSound in this soundscape's playlist if it isn't there yet (dedupe by
+     * path), then adds a SoundConfig referencing the library entry.
+     */
+    async addLibrarySoundToMood(moodId, libraryId, type = constants.SOUNDTYPE.LOOP, category = "") {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        const libSound = game.soundscapeLibrary?.getById(libraryId);
+        if (!libSound) {
+            ui.notifications.warn(`Sound not found in the library.`);
+            return;
+        }
+        // Idempotent by libraryId/path: re-dragging a sound already in the mood is
+        // a no-op with a friendly notice (a valid user action).
+        if (mood.hasSoundFromLibrary(libraryId, libSound.path)) {
+            ui.notifications.info(`"${libSound.name}" is already in this mood.`);
+            return;
+        }
+
+        let ps = this.playlist.sounds.find(s => s.path === libSound.path);
+        if (!ps) {
+            await this.playlist.createEmbeddedDocuments("PlaylistSound", [{
+                name: libSound.name,
+                path: libSound.path,
+                volume: 0.5,
+                repeat: type === constants.SOUNDTYPE.LOOP
+            }]);
+            ps = this.playlist.sounds.find(s => s.path === libSound.path);
+        }
+        if (!ps) {
+            ui.notifications.error(`Could not add "${libSound.name}" to the playlist.`);
+            return;
+        }
+
+        mood.addLibrarySound({ playlistSoundId: ps.id, libraryId, name: libSound.name, path: libSound.path, type, category });
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
+    /**
+     * v4: remove a sound from a mood. Deletes the PlaylistSound from this
+     * soundscape's playlist if no other mood still references that file.
+     */
+    async removeSoundFromMood(moodId, soundId) {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        const sound = mood.getSound(soundId);
+        if (!sound) return;
+        const path = sound.path;
+
+        await this.stopSound(sound, moodId);
+        mood.removeSoundEntry(soundId);
+
+        const stillUsed = Object.values(this.moods).some(m => m.sounds.some(s => s.path === path));
+        if (!stillUsed) {
+            const ps = this.playlist.sounds.find(s => s.path === path);
+            if (ps) await this.playlist.deleteEmbeddedDocuments("PlaylistSound", [ps.id]);
+        }
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
+    /**
+     * v3 → v4 migration. Asks the user (with an optional backup), imports the
+     * detected source folder(s) into the global Sound Library, then keeps only the
+     * sounds the moods actually use (drops the old SOUNDPAD dump), tags each kept
+     * sound with its libraryId, and trims the playlist.
+     * @returns {Promise<boolean>} true if migrated, false if postponed/failed.
+     */
+    async migrateToV4(json) {
+        const lib = game.soundscapeLibrary;
+        if (!lib) {
+            ui.notifications.warn(`Sound Library not ready; "${this.name}" will be migrated next time.`);
+            return false;
+        }
+
+        const allPaths = [];
+        for (const key in this.moods) {
+            for (const s of this.moods[key].sounds) if (s.path) allPaths.push(s.path);
+        }
+        const roots = this._detectRoots(allPaths);
+
+        const parts = decodeURIComponent(this.path).split('/');
+        const filename = parts.pop();
+        const bkName = filename.replace(/\.json$/i, '') + '-bk.json';
+
+        const esc = foundry.utils.escapeHTML;
+        const rootsHtml = roots.length
+            ? `<ul>${roots.map(r => `<li><code>${esc(r)}</code></li>`).join("")}</ul>`
+            : `<p><em>No source folder detected.</em></p>`;
+
+        let result;
+        try {
+            result = await foundry.applications.api.DialogV2.wait({
+                window: { title: `Migrate "${this.name}" to v4` },
+                content: `
+                    <p><b>${esc(this.name)}</b> uses the old format.<br />Migrating to v4 makes it consume the shared
+                    <b>Sound Library</b>: only the sounds actually used by its moods stay in the soundscape and its
+                    playlist.</p>
+                    <p>These folder(s) will be imported into the library:</p>
+                    ${rootsHtml}
+                    <label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem">
+                        <input type="checkbox" name="backup" checked> Back up the current file as <code>${esc(bkName)}</code>
+                    </label>`,
+                buttons: [
+                    {
+                        action: "migrate", label: "Migrate", icon: "fas fa-wand-magic-sparkles", default: true,
+                        callback: (ev, btn) => ({ backup: btn.form.elements.backup.checked })
+                    },
+                    { action: "later", label: "Later", icon: "fas fa-clock" }
+                ],
+                rejectClose: false
+            });
+        } catch {
+            return false;
+        }
+        if (!result || result === "later") return false;
+
+        try {
+            // 1. Backup the current (v3) file.
+            if (result.backup) await this._backupJson(json, bkName);
+
+            // 2. Import the detected folders into the global library.
+            for (const r of roots) {
+                lib.addRoot(r);
+                await lib.importFolder(r);
+            }
+
+            // 3. Drop the SOUNDPAD dump; tag the kept sounds with their library id.
+            for (const key in this.moods) {
+                const mood = this.moods[key];
+                mood.sounds = mood.sounds.filter(s => s.type !== constants.SOUNDTYPE.SOUNDPAD);
+                for (const s of mood.sounds) {
+                    const libSound = lib.findByPath(s.path);
+                    if (libSound) s.libraryId = libSound.id;
+                }
+                mood.has_changes = true;
+            }
+
+            // 4. Trim the playlist to the used paths.
+            const usedPaths = new Set();
+            for (const key in this.moods) {
+                for (const s of this.moods[key].sounds) usedPaths.add(s.path);
+            }
+            const toDelete = Array.from(this.playlist.sounds)
+                .filter(ps => !usedPaths.has(ps.path))
+                .map(ps => ps.id);
+            if (toDelete.length) await this.playlist.deleteEmbeddedDocuments("PlaylistSound", toDelete);
+
+            ui.notifications.info(`Migrated "${this.name}" to v4 — kept ${usedPaths.size} sound(s), removed ${toDelete.length} from the playlist.`);
+            return true;
+        } catch (err) {
+            await this._migrationFailed(err, result.backup ? bkName : null);
+            return false;
+        }
+    }
+
+    /** Report a migration failure and point the user to GitHub issues. */
+    async _migrationFailed(err, bkName) {
+        utils.log(utils.getCallerInfo(), `v4 migration failed for "${this.name}"`, constants.LOGLEVEL.ERROR, err);
+        const esc = foundry.utils.escapeHTML;
+        const url = constants.MODULE.issuesUrl;
+        const backupNote = bkName
+            ? `<p>A backup was saved as <code>${esc(bkName)}</code> — your original data is safe.</p>`
+            : `<p><b>No backup was made.</b> Avoid further changes to this soundscape until resolved.</p>`;
+        try {
+            await foundry.applications.api.DialogV2.prompt({
+                window: { title: "Soundscape migration failed" },
+                content: `
+                    <p>Migrating <b>${esc(this.name)}</b> to v4 failed:</p>
+                    <pre style="white-space:pre-wrap;max-height:8rem;overflow:auto;opacity:.85">${esc(String(err?.message ?? err))}</pre>
+                    ${backupNote}
+                    <p>Please open an issue so we can fix it (include the browser console log, F12):</p>
+                    <p><a href="${url}" target="_blank" rel="noopener">${url}</a></p>`,
+                ok: { label: "Open an issue", icon: "fab fa-github", callback: () => window.open(url, "_blank", "noopener") },
+                rejectClose: false
+            });
+        } catch {
+            ui.notifications.error(`Migration of "${this.name}" failed — please open an issue at ${url}`, { permanent: true });
+        }
+    }
+
+    /**
+     * Validate that this soundscape satisfies the v4 invariants. Returns a report
+     * (no side effects) — handy for checking migrations. See validateAll().
+     */
+    validateV4() {
+        const lib = game.soundscapeLibrary;
+        const issues = [];
+        const usedPaths = new Set();
+        let soundpadDump = 0, danglingLib = 0, missingInPlaylist = 0, noLibraryId = 0, total = 0;
+
+        for (const key in this.moods) {
+            for (const s of this.moods[key].sounds) {
+                total++;
+                usedPaths.add(s.path);
+                if (s.type === constants.SOUNDTYPE.SOUNDPAD) soundpadDump++;
+                if (!s.libraryId) noLibraryId++;
+                const inLib = (s.libraryId && lib?.getById(s.libraryId)) || lib?.findByPath(s.path);
+                if (!inLib) danglingLib++;
+                const ps = this.playlist?.sounds?.get(s.id) || this.playlist?.sounds?.find(p => p.path === s.path);
+                if (!ps) missingInPlaylist++;
+            }
+        }
+        const extras = Array.from(this.playlist?.sounds ?? []).filter(ps => !usedPaths.has(ps.path));
+
+        if (this.version !== 4) issues.push(`version is ${this.version}, expected 4`);
+        if (soundpadDump) issues.push(`${soundpadDump} leftover SOUNDPAD dump sound(s)`);
+        if (danglingLib) issues.push(`${danglingLib} sound(s) not found in the library`);
+        if (missingInPlaylist) issues.push(`${missingInPlaylist} sound(s) missing from the playlist`);
+        if (extras.length) issues.push(`${extras.length} extra playlist sound(s) not used by any mood`);
+        if (noLibraryId) issues.push(`${noLibraryId} sound(s) without a libraryId (warning)`);
+
+        return {
+            name: this.name,
+            version: this.version,
+            totalSounds: total,
+            playlistSounds: this.playlist?.sounds?.size ?? 0,
+            ok: issues.length === 0,
+            issues
+        };
+    }
+
+    /** Identify the source folder(s) from a set of file paths (common prefix). */
+    _detectRoots(paths) {
+        const dirs = [...new Set(paths.map(p => {
+            const d = decodeURIComponent(p);
+            const i = d.lastIndexOf("/");
+            return i >= 0 ? d.slice(0, i) : "";
+        }).filter(Boolean))];
+        if (!dirs.length) return [];
+
+        const split = dirs.map(d => d.split("/"));
+        let prefix = split[0];
+        for (const segs of split.slice(1)) {
+            let i = 0;
+            while (i < prefix.length && i < segs.length && prefix[i] === segs[i]) i++;
+            prefix = prefix.slice(0, i);
+        }
+        const common = prefix.join("/");
+        return common ? [common] : dirs;
+    }
+
+    /** Write the current JSON to a backup file alongside the soundscape. */
+    async _backupJson(json, bkName) {
+        try {
+            const parts = decodeURIComponent(this.path).split('/');
+            parts.pop();
+            const dir = parts.join('/');
+            const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+            const file = new File([blob], bkName, { type: 'application/json' });
+            await foundry.applications.apps.FilePicker.implementation.upload('data', dir, file, {}, { notify: false });
+            utils.log(utils.getCallerInfo(), `Backed up ${this.name} to ${bkName}`, constants.LOGLEVEL.INFO);
+        } catch (e) {
+            utils.log(utils.getCallerInfo(), `Backup failed for ${this.name}`, constants.LOGLEVEL.ERROR, e);
         }
     }
 

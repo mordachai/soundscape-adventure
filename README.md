@@ -1,7 +1,11 @@
+![Soundscape Adventure](readme/banner.png)
+
 # Soundscape Adventure for FoundryVTT
 [![Current Version](https://img.shields.io/github/v/release/piecesofcodecom/soundscape-adventure?style=for-the-badge&label=Current%20Version)]() [![Latest Release Download Count](https://img.shields.io/github/downloads/piecesofcodecom/soundscape-adventure/latest/module.zip?label=Downloads&style=for-the-badge)]() [![Forge Installs](https://img.shields.io/badge/dynamic/json?label=Forge%20Installs&query=package.installs&suffix=%25&url=https%3A%2F%2Fforge-vtt.com%2Fapi%2Fbazaar%2Fpackage%2Fsoundscape-adventure&colorB=03ff1c&style=for-the-badge)](https://forge-vtt.com/bazaar#package=soundscape-adventure)
 
-[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/snagov)
+<center>
+<a href='https://ko-fi.com/X8X011IQ3J' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+</center>
 
 ## Overview
 
@@ -9,11 +13,14 @@ The Soundscape Adventure module for FoundryVTT enhances your tabletop RPG experi
 
 ## Features
 
-- **Directory Scanning**: Automatically scans specified directories for ambient, random, and loop sounds, organizing them into soundscapes.
+- **Sound Library**: A global, cross-world library that acts as the single source of truth for your sounds. Import folders, organize sounds with tags and folder views, mark favorites, find duplicates, preview with a global volume, and drag sounds straight into your moods. Shared across every world in your install.
+- **Tags & Synonyms**: Tag sounds freely or let folders auto-tag them. Create "umbrella" tags (e.g. a generic `bird`) and attach synonyms so searching one term surfaces related sounds — a curated, per-library thesaurus that expands search and groups sounds under a canonical tag.
 - **Mood Creation**: Create various moods for each soundscape, enabling quick transitions between different audio settings.
-- **Cross-World Configuration**: Once configured, your soundscapes and moods are saved and can be used across any world in FoundryVTT, eliminating the need for reconfiguration.
+- **Cross-World Configuration**: Once configured, your soundscapes, moods, and library are saved and can be used across any world in FoundryVTT, eliminating the need for reconfiguration.
 - **Random Sound Playback**: Play sounds randomly from a designated group, adding variety and unpredictability to your soundscapes.
-- **Loop Sound Groups**: Organize loop sounds into groups where each sound represents a different intensity. For example, create a loop group for rain sounds ranging from a light drizzle to a heavy storm and adjust the intensity within your mood settings.
+- **Loop Sound Groups**: Organize loop sounds into groups with two playback modes:
+  - *Intensity* — each sound represents a different intensity; e.g. a rain group ranging from a light drizzle to a heavy storm, controlled by an intensity slider in your mood settings.
+  - *Sequential* — the sounds play one after another in order, looping back to the first when the last finishes.
 - **Triggers**: Select to play a mood or a sound based on region's behaviours, combats, and scenes.
 
 ## Installation
