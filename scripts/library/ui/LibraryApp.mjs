@@ -6,8 +6,10 @@ const LS_VOLUME = "soundscape-library.previewVolume";
 const LS_PLAYLIST = "soundscape-library.targetPlaylist";
 const LS_POSITION = "soundscape-library.windowPosition";
 const ITEM_TPL = `${TPL}/parts/list-item.hbs`;
-const ROW_HEIGHT = 46;  // fixed row height (px) — required for windowing math
-const OVERSCAN = 6;     // extra rows above/below the viewport for smooth scrolling
+const TREE_ITEM_TPL = `${TPL}/parts/tree-item.hbs`;
+const ROW_HEIGHT = 46;       // fixed General-list row height (px) — required for windowing math
+const TREE_ROW_HEIGHT = 32;  // fixed Folders-tree row height (px) — must match .sa-lib-tree__dir/__file
+const OVERSCAN = 6;          // extra rows above/below the viewport for smooth scrolling
 
 /**
  * The Sound Library window.
@@ -100,6 +102,25 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
         if (this.#listRaf) return;
         this.#listRaf = requestAnimationFrame(() => { this.#listRaf = null; this.#renderListWindow(); });
     };
+    /** Filtered sounds backing the virtualized Folders tree (built lazily). */
+    #filteredSounds = [];
+    /** Full flat tree rows (folders + files); rebuilt only when data changes. */
+    #treeData = [];
+    /** Tree rows currently visible (i.e. not under a collapsed folder). */
+    #treeVisible = [];
+    /** True when #treeData must be rebuilt before the next tree paint. */
+    #treeDirty = true;
+    /** Compiled tree-item template (loaded once). */
+    #treeTpl = null;
+    /** Last known Folders-tree scroll position. */
+    #treeScrollTop = 0;
+    /** rAF token to throttle tree window re-renders on scroll. */
+    #treeRaf = null;
+    #treeScrollHandler = (ev) => {
+        this.#treeScrollTop = ev.target.scrollTop;
+        if (this.#treeRaf) return;
+        this.#treeRaf = requestAnimationFrame(() => { this.#treeRaf = null; this.#renderTreeWindow(); });
+    };
     // Stable input/change handlers — toolbar elements survive partial renders, so
     // these are attached with remove-then-add to avoid stacking duplicates.
     #searchHandler = () => {
@@ -153,6 +174,11 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
 
         // Back the virtualized General list with the filtered, view-shaped data.
         this.#itemTpl ??= await foundry.applications.handlebars.getTemplate(ITEM_TPL);
+        this.#treeTpl ??= await foundry.applications.handlebars.getTemplate(TREE_ITEM_TPL);
+        // The Folders tree is virtualized too: keep the filtered set and defer the
+        // (potentially large) tree build until the tab is actually painted.
+        this.#filteredSounds = sounds;
+        this.#treeDirty = true;
         this.#listData = sounds.map(s => ({
             id: s.id,
             name: s.name,
@@ -180,7 +206,6 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
                 { id: "synonyms", label: "Synonyms", icon: "fa-diagram-project", active: this.#activeTab === "synonyms" },
                 { id: "tutorial", label: "Tutorial", icon: "fa-circle-question", active: this.#activeTab === "tutorial" }
             ],
-            tree: this.#buildTree(sounds, this.#showIgnored),
             showIgnored: this.#showIgnored,
             synonymGroups: lib.getSynonymGroups(),
             allTagsList: lib.getAllTags(),
@@ -247,18 +272,26 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
         root.removeEventListener("contextmenu", this.#contextMenuHandler);
         root.addEventListener("contextmenu", this.#contextMenuHandler);
 
-        // Show only the active tab's pane, and apply folder collapse state.
+        // Show only the active tab's pane.
         this.#applyTab();
-        this.#applyTreeCollapse();
 
         // Preserve scroll position across re-renders. Capture phase catches the
         // scroll regardless of which element actually scrolls; restoring to every
         // candidate is safe (non-scrollers ignore it).
         root.removeEventListener("scroll", this.#scrollHandler, true);
         root.addEventListener("scroll", this.#scrollHandler, true);
-        for (const sel of [".window-content", ".sa-lib-tree"]) {
+        for (const sel of [".window-content"]) {
             const el = root.querySelector(sel);
             if (el) el.scrollTop = this.#scrollTop;
+        }
+
+        // Virtualized Folders tree: re-window on scroll, restore position, paint.
+        const tree = root.querySelector(".sa-vtree");
+        if (tree) {
+            tree.removeEventListener("scroll", this.#treeScrollHandler);
+            tree.addEventListener("scroll", this.#treeScrollHandler);
+            tree.scrollTop = this.#treeScrollTop;
+            this.#renderTreeWindow();
         }
 
         // Virtualized General list: re-window on scroll, restore position, paint.
@@ -409,7 +442,8 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
             case "toggle-dir": {
                 const p = el.dataset.path;
                 this.#collapsed.has(p) ? this.#collapsed.delete(p) : this.#collapsed.add(p);
-                return this.#applyTreeCollapse();
+                this.#recomputeTreeVisible();
+                return this.#renderTreeWindow();
             }
             case "import": return this.#importFolder();
             case "roots": return this.#openRoots();
@@ -1088,30 +1122,67 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
         root.querySelectorAll(".sa-lib-tab").forEach(b =>
             b.classList.toggle("is-active", b.dataset.tab === this.#activeTab)
         );
-        // The list may have been measured at height 0 while hidden — repaint it.
+        // A virtualized pane may have been measured at height 0 while hidden —
+        // repaint whichever one just became visible.
         if (general) this.#renderListWindow();
+        else if (tab === "folders") this.#renderTreeWindow();
     }
 
-    /** Hide rows under collapsed folders and update each folder's chevron. */
-    #applyTreeCollapse() {
-        const root = this.element;
-        if (!root) return;
+    /** Rebuild the full flat tree from the current filtered set, if marked dirty. */
+    #rebuildTreeIfDirty() {
+        if (!this.#treeDirty) return;
+        this.#treeData = this.#buildTree(this.#filteredSounds, this.#showIgnored);
+        this.#treeDirty = false;
+        this.#recomputeTreeVisible();
+    }
+
+    /** Recompute which tree rows are visible given the current collapse state. */
+    #recomputeTreeVisible() {
         const collapsed = [...this.#collapsed];
         const isHidden = (path, isDir) =>
             collapsed.some(c => path.startsWith(c + "/") || (!isDir && path === c));
+        this.#treeVisible = this.#treeData.filter(r => !isHidden(r.path, r.isDir));
+    }
 
-        root.querySelectorAll(".sa-lib-tree__dir").forEach(el => {
-            const path = el.dataset.path;
-            el.style.display = isHidden(path, true) ? "none" : "";
-            if (el.classList.contains("is-ignored")) return; // not collapsible (keeps its ban icon)
-            const chev = el.querySelector(".sa-lib-tree__chevron");
-            if (chev) {
-                chev.className = `fas ${this.#collapsed.has(path) ? "fa-chevron-right" : "fa-chevron-down"} sa-lib-tree__chevron`;
-            }
-        });
-        root.querySelectorAll(".sa-lib-tree__file").forEach(el => {
-            el.style.display = isHidden(el.dataset.path, false) ? "none" : "";
-        });
+    /**
+     * Render only the tree rows currently in view (windowing). Mirrors
+     * #renderListWindow: rows are absolutely positioned inside a full-height sizer,
+     * offset by translateY. Without this a 16k-sound library would put every row in
+     * the DOM at once (hundreds of MB of nodes).
+     */
+    #renderTreeWindow() {
+        const scroller = this.element?.querySelector(".sa-vtree");
+        const sizer = scroller?.querySelector(".sa-vtree__sizer");
+        const rowsEl = scroller?.querySelector(".sa-vtree__rows");
+        if (!scroller || !rowsEl || !this.#treeTpl) return;
+
+        this.#rebuildTreeIfDirty();
+        const data = this.#treeVisible;
+        const total = data.length;
+        if (sizer) sizer.style.height = `${total * TREE_ROW_HEIGHT}px`;
+
+        if (total === 0) {
+            rowsEl.style.transform = "translateY(0)";
+            rowsEl.innerHTML = `<div class="sa-lib-empty">No sounds. Use “Import” to add your audio library.</div>`;
+            return;
+        }
+
+        const viewport = scroller.clientHeight || 1;
+        const start = Math.max(0, Math.floor(scroller.scrollTop / TREE_ROW_HEIGHT) - OVERSCAN);
+        const count = Math.ceil(viewport / TREE_ROW_HEIGHT) + OVERSCAN * 2;
+        const end = Math.min(total, start + count);
+
+        let html = "";
+        for (let i = start; i < end; i++) {
+            const row = data[i];
+            // Chevron direction comes from the live collapse set (toggles don't rebuild).
+            if (row.isDir && !row.ignored) row.collapsed = this.#collapsed.has(row.path);
+            html += this.#treeTpl(row);
+        }
+        rowsEl.style.transform = `translateY(${start * TREE_ROW_HEIGHT}px)`;
+        rowsEl.innerHTML = html;
+
+        if (this.#previewId) this.#setPlayIcon(this.#previewId, "stop");
     }
 
     /**
