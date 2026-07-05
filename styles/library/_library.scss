@@ -906,13 +906,17 @@
     .sa-lib-tree {
         flex: 1 1 auto;
         min-height: 0;
-        padding: 0.25rem;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
 
         &__dir {
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            height: 32px;               // must match TREE_ROW_HEIGHT in JS (windowing)
+            box-sizing: border-box;
+            overflow: hidden;
             padding: 0.25rem 0.5rem;
             font-size: 0.8125rem;
             font-weight: 600;
@@ -987,6 +991,9 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            height: 32px;               // must match TREE_ROW_HEIGHT in JS (windowing)
+            box-sizing: border-box;
+            overflow: hidden;
             padding: 0.25rem 0.5rem;
             border-radius: var(--sa-radius);
 
@@ -1016,5 +1023,28 @@
             color: var(--sa-text-muted);
             font-variant-numeric: tabular-nums;
         }
+    }
+
+    // Virtualized tree scroller: the sizer creates the full scroll height; only
+    // in-view rows live inside the absolutely-positioned rows container.
+    .sa-vtree {
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+        overflow-y: auto;
+        padding: 0.25rem;
+    }
+
+    .sa-vtree__sizer {
+        position: relative;
+        width: 100%;
+    }
+
+    .sa-vtree__rows {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        will-change: transform;
     }
 }
