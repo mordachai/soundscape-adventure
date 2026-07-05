@@ -128,5 +128,6 @@ Hooks.once('ready', () => {
     'modules/soundscape-adventure/templates/soundscape/parts/sound-list.hbs',
     'modules/soundscape-adventure/templates/soundscape/parts/sound-category.hbs'
   ]);
-  newsDialog();
+  // News is a GM-facing changelog — players should never see it.
+  if (game.user.isGM) newsDialog();
 });

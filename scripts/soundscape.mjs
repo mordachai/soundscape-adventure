@@ -221,6 +221,25 @@ export default class Soundscape {
     }
 
     async reloadSoundscape() {
+        // Bring the global library up to date with disk BEFORE reloading, so moved
+        // or renamed files are relinked in the library (libraryId kept stable). The
+        // init() → consistence() pass below then recovers each sound's new path via
+        // its libraryId instead of dropping it. Done here (the explicit Refresh
+        // button) and not in init() so world boot doesn't rescan the disk once per
+        // soundscape. Failure is non-fatal — fall back to a plain reload.
+        try {
+            const summary = await game.soundscapeLibrary?.refresh();
+            // Let the user know when a moved file was silently relinked, so a
+            // "it just kept working" isn't mistaken for the file never having moved.
+            if (summary?.relinked) {
+                const names = summary.relinkedDetails.map(d => d.name);
+                const shown = names.slice(0, 5).join(", ");
+                const more = names.length > 5 ? ` (+${names.length - 5} more)` : "";
+                ui.notifications.info(`Relinked ${summary.relinked} moved sound${summary.relinked > 1 ? "s" : ""}: ${shown}${more}.`);
+            }
+        } catch (err) {
+            console.error("Soundscape | library refresh before reload failed:", err);
+        }
         await this.init();
         // Reflect the refreshed model (e.g. names synced from the library) in any
         // open window and the sidebar.

@@ -849,6 +849,13 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
         ui.notifications.info(
             `Library refreshed — added ${s.added}, relinked ${s.relinked}, missing ${s.missing}, auto-tagged ${s.autoTagged ?? 0}.`
         );
+        // Call out moved files by name — the relinked count alone doesn't say which.
+        if (s.relinked) {
+            const names = s.relinkedDetails.map(d => d.name);
+            const shown = names.slice(0, 5).join(", ");
+            const more = names.length > 5 ? ` (+${names.length - 5} more)` : "";
+            ui.notifications.info(`Moved files relinked: ${shown}${more}.`);
+        }
     }
 
     async #removeSound(id) {
