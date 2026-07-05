@@ -708,7 +708,19 @@ export class SoundLibrary {
     async refresh({ autoRelink = true, prune = false, force = false } = {}) {
         const { paths, byName } = await this._scanRoots();
 
-        // Import new files first, so reconcile sees them as "owned" when classifying.
+        // Reconcile FIRST so a moved file is relinked onto its existing entry
+        // (keeping the stable libraryId) before we import anything. If we imported
+        // first, the moved file's new path would be adopted as a brand-new sound;
+        // the original entry would then stay stuck `missing` with a dead path, and
+        // any soundscape that references its libraryId would drop the sound on the
+        // next consistence() pass. The tradeoff: a genuinely new file that happens
+        // to share a name with a missing sound is treated as that sound moving
+        // (relinked) rather than a separate entry — the right call for this module,
+        // where files move far more often than names collide by accident.
+        const summary = this._reconcileScan(paths, byName, { autoRelink, prune, force });
+
+        // Then import whatever is genuinely new — every scanned path not already
+        // owned (relink above may have just claimed some of them).
         let added = 0;
         this._suppressEvents = true;
         try {
@@ -725,8 +737,6 @@ export class SoundLibrary {
         } finally {
             this._suppressEvents = false;
         }
-
-        const summary = this._reconcileScan(paths, byName, { autoRelink, prune, force });
         summary.added = added;
         // Re-apply synonym groups as name-based tag rules (so new/renamed files get
         // tagged, matching the canonical tag OR any of its synonyms).
@@ -902,7 +912,7 @@ export class SoundLibrary {
      * @returns {object} reconcile summary
      */
     _reconcileScan(paths, byName, { autoRelink = true, prune = false, force = false } = {}) {
-        const summary = { checked: 0, missing: 0, recovered: 0, relinked: 0, ambiguous: 0, duplicate: 0, gone: 0, pruned: 0 };
+        const summary = { checked: 0, missing: 0, recovered: 0, relinked: 0, ambiguous: 0, duplicate: 0, gone: 0, pruned: 0, relinkedDetails: [] };
 
         // SAFEGUARD 1: an empty scan means the roots are missing/inaccessible, NOT
         // that every sound vanished. Abort instead of flagging the whole library
@@ -943,12 +953,14 @@ export class SoundLibrary {
             const candidates = sameName.filter(p => !this._byPath.has(p));
 
             if (autoRelink && candidates.length === 1) {
+                const from = sound.path;
                 this._unindex(sound);
                 sound.path = candidates[0];
                 sound.missing = false;
                 sound.missingReason = "";
                 this._index(sound);
                 summary.relinked++;
+                summary.relinkedDetails.push({ name: sound.name, from, to: sound.path });
             } else if (candidates.length > 1) {
                 sound.missingReason = "ambiguous";
                 summary.ambiguous++;

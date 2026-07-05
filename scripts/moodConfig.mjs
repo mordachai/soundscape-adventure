@@ -134,42 +134,57 @@ export default class MoodConfig {
     // validate files for sounds in the mood exist
     //TODO include the consistence for groups
     async consistence(playlist) {
-        // validates if all sounds in the mood are in the playlist
-        for (let i = 0; i < this.sounds.length; i++) {
-            const playlistsound = playlist.sounds.find(el => el.path == this.sounds[i].path);
-            if (!playlistsound) {
-                this.has_changes = true;
-                const response = await fetch(this.sounds[i].path, { method: 'HEAD' });
-                if (!response.ok) {
-                    // Log or notify about the missing file, but do not stop execution
-                    ui.notifications.warn(`Sound not found ${this.sounds[i].path}. Removing from the soundscape.`);
-                    this.removeSoundFromAllGroups(this.sounds[i].id);
-                    this.sounds.splice(i, 1);
-                    //TODO check if sound id is in a group and remove it
-                } else {
-                    // Only load if the file was found
-                    const old_id = this.sounds[i].id;
-                    this.sounds[i].id = await this.registerSound(this.sounds[i], playlist);
-                    this.updateGroupSoundId(old_id, this.sounds[i].id);
-                    utils.log(utils.getCallerInfo(), `Had to register a new audio: ${this.sounds[i].path}`, constants.LOGLEVEL.INFO);
-                }
-            } else {
-                //check file still exists
-                try {
-                    const response = await fetch(playlistsound.path, { method: 'HEAD' });
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    const old_id = this.sounds[i].id;
-                    this.sounds[i].id = playlistsound.id;
-                    this.updateGroupSoundId(old_id, this.sounds[i].id);
-                } catch (err) {
-                    ui.notifications.warn(`Sound not found ${this.sounds[i].path}. Removing from the soundscape.`);
-                    this.removeSoundFromAllGroups(this.sounds[i].id);
-                    this.sounds.splice(i, 1);
-                    await playlist.deleteEmbeddedDocuments("PlaylistSound", [playlistsound.id]);
+        // Validate every sound in the mood. Iterate backwards so splicing a removed
+        // entry doesn't skip the next one.
+        for (let i = this.sounds.length - 1; i >= 0; i--) {
+            const sound = this.sounds[i];
+            const oldPath = sound.path;
+
+            // Does the file still exist where the JSON says it is? (browse-based —
+            // HEAD requests are unreliable against Foundry's static server.)
+            let exists = await this.validateFileExists(oldPath);
+
+            // If not, the file may simply have moved: recover its new path from the
+            // global library via the stable libraryId before giving up on it.
+            if (!exists) {
+                const recovered = this._recoverPathFromLibrary(sound);
+                if (recovered && recovered !== oldPath && await this.validateFileExists(recovered)) {
+                    utils.log(utils.getCallerInfo(), `Relinked '${sound.name}' from library: ${oldPath} -> ${recovered}`, constants.LOGLEVEL.INFO);
+                    sound.path = recovered;
+                    exists = true;
                     this.has_changes = true;
+                    // Drop the PlaylistSound still pointing at the old, now-gone path.
+                    const stale = playlist.sounds.find(el => el.path == oldPath);
+                    if (stale) await playlist.deleteEmbeddedDocuments("PlaylistSound", [stale.id]);
                 }
+            }
+
+            if (!exists) {
+                // Truly gone (library couldn't help): remove it from the mood, any
+                // group, and drop a stray PlaylistSound.
+                ui.notifications.warn(`Sound not found ${oldPath}. Removing from the soundscape.`);
+                this.removeSoundFromAllGroups(sound.id);
+                const stray = playlist.sounds.find(el => el.path == oldPath);
+                if (stray) await playlist.deleteEmbeddedDocuments("PlaylistSound", [stray.id]);
+                this.sounds.splice(i, 1);
+                this.has_changes = true;
+                continue;
+            }
+
+            // The file exists at sound.path. Make sure a PlaylistSound backs it and
+            // the SoundConfig id points at that PlaylistSound.
+            const playlistsound = playlist.sounds.find(el => el.path == sound.path);
+            if (!playlistsound) {
+                const old_id = sound.id;
+                sound.id = await this.registerSound(sound, playlist);
+                this.updateGroupSoundId(old_id, sound.id);
+                this.has_changes = true;
+                utils.log(utils.getCallerInfo(), `Had to register a new audio: ${sound.path}`, constants.LOGLEVEL.INFO);
+            } else if (sound.id !== playlistsound.id) {
+                const old_id = sound.id;
+                sound.id = playlistsound.id;
+                this.updateGroupSoundId(old_id, sound.id);
+                this.has_changes = true;
             }
         }
 
@@ -180,20 +195,36 @@ export default class MoodConfig {
     }
 
     async validateFileExists(filePath) {
+        if (!filePath) return false;
         const directory = filePath.substring(0, filePath.lastIndexOf('/'));
-        const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
-
+        // Compare decoded paths: FilePicker.browse may return percent-encoded
+        // entries (e.g. spaces) while the stored path is not, so a raw `includes`
+        // can give a false negative and wrongly flag an existing file as missing.
+        const target = decodeURIComponent(filePath);
         try {
             const result = await foundry.applications.apps.FilePicker.browse("data", directory);
-
-            if (result.files.includes(filePath)) {
-                return true;
-            } else {
-                return false;
-            }
+            return result.files.some(f => decodeURIComponent(f) === target);
         } catch (error) {
             return false;
         }
+    }
+
+    /**
+     * When a sound's stored file path no longer exists on disk, try to find where
+     * the file went using the stable `libraryId`: the global library is the source
+     * of truth and a library Refresh relinks moved files while keeping the
+     * libraryId unchanged. Returns the library's current path for this sound (the
+     * caller must still verify it exists) or null when the library can't help.
+     * @param {object} sound  A SoundConfig-like entry with `libraryId`/`path`.
+     * @returns {string|null}
+     */
+    _recoverPathFromLibrary(sound) {
+        if (!sound?.libraryId) return null;
+        const lib = game.soundscapeLibrary;
+        if (!lib) return null;
+        const libSound = lib.getById(sound.libraryId);
+        if (!libSound || !libSound.path) return null;
+        return libSound.path;
     }
 
     updateGroupSoundId(oldId, newId) {
