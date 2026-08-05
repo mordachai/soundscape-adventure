@@ -456,6 +456,7 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
             case "toggle-favorites":
                 this.#favoritesOnly = !this.#favoritesOnly;
                 return this.render(false);
+            case "copy-path": return this.#copyPath(el.closest("[data-id]")?.dataset.id);
             case "remove": return this.#removeSound(el.closest("[data-id]")?.dataset.id);
             case "remove-folder": return this.#removeFolder(el.dataset.path);
             case "folder-to-playlist": return this.#folderToPlaylist(el.dataset.path);
@@ -890,6 +891,15 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
             const more = names.length > 5 ? ` (+${names.length - 5} more)` : "";
             ui.notifications.info(`Moved files relinked: ${shown}${more}.`);
         }
+    }
+
+    /** Copy a sound's file path to the clipboard. */
+    async #copyPath(id) {
+        if (!id) return;
+        const sound = this.library.getById(id);
+        if (!sound?.path) return;
+        game.clipboard.copyPlainText(sound.path);
+        ui.notifications.info(`Path copied: ${sound.path}`);
     }
 
     async #removeSound(id) {
