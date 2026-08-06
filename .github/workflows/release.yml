@@ -2,9 +2,10 @@ name: Build & Release
 
 # Runs when module.json's version is changed and pushed to main.
 # To release: bump "version" in module.json (e.g. "7.0.0" or "7.0.0-beta") and
-# merge/push to main. Builds the bundle, creates a tag + GitHub Release with the
-# packaged module, and publishes the version to the FoundryVTT package API.
-# Skips (via tag-exists check) if that version was already released.
+# merge/push to main. Builds the bundle and creates a tag + GitHub Release with
+# the packaged module. Skips (via tag-exists check) if that version was already
+# released. Does not publish to the FoundryVTT package API — install via manifest
+# URL from the GitHub Release.
 
 on:
   push:
@@ -94,55 +95,3 @@ jobs:
           files: |
             module.json
             module.zip
-
-      - name: Publish version to FoundryVTT
-        if: steps.check_tag.outputs.exists == 'false'
-        env:
-          FOUNDRY_TOKEN: ${{ secrets.FOUNDRYVTT_RELEASE_TOKEN }}
-        run: |
-          REPO="${{ github.repository }}"
-          TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
-
-          ID=$(jq -r '.id' module.json)
-          MIN=$(jq -r '.compatibility.minimum // ""' module.json)
-          VERIFIED=$(jq -r '.compatibility.verified // ""' module.json)
-          MAX=$(jq -r '.compatibility.maximum // ""' module.json)
-
-          # FoundryVTT requires the submitted manifest to point at this SPECIFIC
-          # release, not the moving "latest" alias (the latter is only for the
-          # auto-update manifest field embedded inside the manifest itself).
-          payload=$(jq -n \
-            --arg id "$ID" \
-            --arg version "$VERSION" \
-            --arg manifest "https://github.com/$REPO/releases/download/$TAG/module.json" \
-            --arg notes "https://github.com/$REPO/releases/tag/$TAG" \
-            --arg min "$MIN" \
-            --arg verified "$VERIFIED" \
-            --arg max "$MAX" \
-            '{
-              id: $id,
-              "dry-run": false,
-              release: {
-                version: $version,
-                manifest: $manifest,
-                notes: $notes,
-                compatibility: { minimum: $min, verified: $verified, maximum: $max }
-              }
-            }')
-
-          echo "Submitting to FoundryVTT:"
-          echo "$payload" | jq '.'
-
-          http_code=$(curl -sS -o response.json -w '%{http_code}' \
-            -X POST "https://foundryvtt.com/_api/packages/release_version/" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: $FOUNDRY_TOKEN" \
-            -d "$payload")
-
-          echo "HTTP $http_code"
-          cat response.json
-          if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
-            echo "::error::FoundryVTT release failed (HTTP $http_code)"
-            exit 1
-          fi
