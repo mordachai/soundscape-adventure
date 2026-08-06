@@ -2,7 +2,7 @@
   "id": "soundscape-adventure",
   "title": "Soundscape Adventure",
   "description": "The Soundscape Adventure module for FoundryVTT enhances your tabletop RPG experience by providing dynamic and immersive soundscapes.",
-  "version": "v7.0.1",
+  "version": "7.0.1",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
