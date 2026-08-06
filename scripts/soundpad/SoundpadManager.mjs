@@ -104,7 +104,7 @@ export class SoundpadManager {
         delete this.soundpads[id];
 
         const current = game.settings.get('soundscape-adventure', 'soundpads');
-        const remaining = current.split(";").filter(p => p.length > 0 && !pad.path.includes(p));
+        const remaining = current.split(";").filter(p => p.length > 0 && p !== pad.path);
         await game.settings.set('soundscape-adventure', 'soundpads', remaining.join(";"));
 
         // 1:1 pad<->playlist now, so deleting the pad's own playlist is enough —
@@ -120,5 +120,60 @@ export class SoundpadManager {
     /** Route a raw Foundry-side PlaylistSound event back to its owning pad — used by the name-sync hook in soundpad-adventure.mjs. */
     getSoundpadByPlaylistId(playlistId) {
         return Object.values(this.soundpads).find(p => p.playlist?.id === playlistId);
+    }
+
+    /** Resolve a pad by id first, then by exact (case-insensitive) name — lets macros use a human name instead of an id. */
+    findSoundpad(padRef) {
+        return this.soundpads[padRef]
+            || Object.values(this.soundpads).find(p => p.name.toLowerCase() === String(padRef).toLowerCase());
+    }
+
+    // ------------------------------------------------------------ macro API
+
+    /**
+     * Trigger a cell by pad + cell name (or id) — the entry point for macros/RegionBehaviors,
+     * e.g. `game.soundscapeSoundpads.play("Weather", "Thunder Loop")`. Loop mode, volume,
+     * variation etc. all come from the cell's own configuration in the Soundpad editor — pass
+     * `once: true` to force a single play regardless of how the cell is configured.
+     * @param {string} padRef pad id or name
+     * @param {string} cellRef cell id or name
+     * @param {{once?: boolean}} [options]
+     * @returns {Promise<boolean>} true if a matching cell was found and triggered
+     */
+    async play(padRef, cellRef, { once = false } = {}) {
+        const pad = this.findSoundpad(padRef);
+        const cell = pad && this._findCell(pad, cellRef);
+        if (!cell) {
+            ui.notifications.warn(`Soundpad cell "${cellRef}" not found on pad "${padRef}".`);
+            return false;
+        }
+        await (once ? pad.playCellOnce(cell.id) : pad.playCell(cell.id));
+        return true;
+    }
+
+    /**
+     * Stop a cell by pad + cell name (or id) — the macro/RegionBehavior counterpart to play().
+     * @param {string} padRef pad id or name
+     * @param {string} cellRef cell id or name
+     * @returns {Promise<boolean>} true if a matching cell was found and stopped
+     */
+    async stop(padRef, cellRef) {
+        const pad = this.findSoundpad(padRef);
+        const cell = pad && this._findCell(pad, cellRef);
+        if (!cell) return false;
+        await pad.stopCell(cell.id);
+        return true;
+    }
+
+    /** Whether a cell (by pad + cell name or id) is currently playing/looping. */
+    isPlaying(padRef, cellRef) {
+        const pad = this.findSoundpad(padRef);
+        const cell = pad && this._findCell(pad, cellRef);
+        return !!cell && pad.isCellPlaying(cell.id);
+    }
+
+    _findCell(pad, cellRef) {
+        return pad.getCell(cellRef)
+            || pad.cells.find(c => c.name.toLowerCase() === String(cellRef).toLowerCase());
     }
 }

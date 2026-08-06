@@ -1,4 +1,4 @@
-<li class="soundpad-pad-list-item{{#if pad.selected}} active{{/if}}" data-action="selectPad" data-pad-id="{{pad.id}}">
+<li class="soundpad-pad-list-item{{#if pad.selected}} active{{/if}}{{#if pad.color}} has-color{{/if}}" data-action="selectPad" data-pad-id="{{pad.id}}"{{#if pad.color}} style="--soundpad-pad-color: var(--sa-soundpad-color-{{pad.color}});"{{/if}}>
     <label class="soundpad-pad-checkbox" data-pad-id="{{pad.id}}">
         <input type="checkbox"{{#if pad.checked}} checked{{/if}} />
         <span class="soundpad-pad-checkbox-box"></span>

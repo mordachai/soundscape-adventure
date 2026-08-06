@@ -3,6 +3,7 @@ import constants from "./utils/constants.mjs";
 import utils from "./utils/utils.mjs";
 import { RandomSoundManager } from './RandomSoundManager.mjs';
 import { getHandler } from './soundTypeHandlers.mjs';
+import { activateLinkedSoundpads } from './soundpad-adventure.mjs';
 
 
 //TODO new behavior:
@@ -477,6 +478,10 @@ export default class Soundscape {
         if (this.moods[moodId]) {
             const sounds = await this.moods[moodId].getSoundsToPlay();
             this.moods[moodId].status = constants.STATUS.MOOD.PLAYING;
+            // Linked Soundpads: select exactly them in the Soundpad Manager (any
+            // other pad gets deselected) and switch "Only selected" on. Empty list
+            // = leave the manager's current selection/filter untouched.
+            activateLinkedSoundpads(this.moods[moodId].linkedSoundpads);
             // configure sound before playing
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
@@ -1037,6 +1042,27 @@ export default class Soundscape {
         if (this.openUI) this.openUI.render(true);
     }
 
+    /** Link a Soundpad to a mood (dragged in from the Soundpad Manager's pad list). */
+    async addLinkedSoundpadToMood(moodId, padId, padName = "") {
+        const mood = this.moods[moodId];
+        if (!mood || !padId) return;
+        if (!mood.addLinkedSoundpad(padId)) {
+            ui.notifications.info(`"${padName || padId}" is already linked to this mood.`);
+            return;
+        }
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
+    /** Unlink a Soundpad from a mood. */
+    async removeLinkedSoundpadFromMood(moodId, padId) {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        mood.removeLinkedSoundpad(padId);
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
     /**
      * v4: remove a sound from a mood. Deletes the PlaylistSound from this
      * soundscape's playlist if no other mood still references that file.
@@ -1538,7 +1564,7 @@ export default class Soundscape {
         } catch {
             return;
         }
-        if (newMood.length < 2) {
+        if (!newMood || newMood.length < 2) {
             ui.notifications.warn("Error cloning a mood.");
             return;
         } else {
@@ -1566,7 +1592,7 @@ export default class Soundscape {
         } catch {
             return;
         }
-        if (newMoodName.trim() === "") {
+        if (!newMoodName || newMoodName.trim() === "") {
             ui.notifications.warn("You must provide a name for the new mood.");
             return;
         } else {

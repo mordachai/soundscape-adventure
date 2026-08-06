@@ -197,6 +197,12 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 this.soundscape.addLibrarySoundToMood(moodId, data.libraryId, type, dropZone.dataset?.dropZoneCategory);
                 return; // addLibrarySoundToMood saves + re-renders
             }
+            if (data.type === "soundpad-link") {
+                // A Soundpad dragged in from the Soundpad Manager's pad list →
+                // link it to the currently displayed mood.
+                this.soundscape.addLinkedSoundpadToMood(this.currentMoodOnUI, data.padId, data.padName);
+                return; // addLinkedSoundpadToMood saves + re-renders
+            }
             this.soundscape.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
             this.soundscape.markMoodAsChanged(data.moodId);
         }
@@ -419,7 +425,19 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         return;
                         break;
                     case "remove-sound":
-                        await this.soundscape.removeSoundFromMood(moodId, soundId);
+                        // Group cards reuse this same trash button/action with the
+                        // group's own id as soundId — removeSoundFromMood only
+                        // understands plain sound ids (its getSound() fallback
+                        // resolves a group id to the group's *current member sound*,
+                        // not the group), so it silently no-ops on groups while still
+                        // saving. Route groups to deleteGroup instead.
+                        if (soundType == constants.SOUNDTYPE.GROUP_LOOP
+                            || soundType == constants.SOUNDTYPE.GROUP_RANDOM
+                            || soundType == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
+                            await this.soundscape.deleteGroup(moodId, soundId);
+                        } else {
+                            await this.soundscape.removeSoundFromMood(moodId, soundId);
+                        }
                         this.myRender(true);
                         return;
                     case "preview-sound":
@@ -464,6 +482,15 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
                 }
                 this.myRender(true);
+            });
+        });
+
+        // Linked Soundpad controls
+        this.element.querySelectorAll('[data-action="remove-linked-soundpad"]').forEach(el => {
+            el.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const padId = el.dataset.padId;
+                await this.soundscape.removeLinkedSoundpadFromMood(this.currentMoodOnUI, padId);
             });
         });
 

@@ -38,6 +38,10 @@ export default class MoodConfig {
     groups = [];
     categories = [];
     has_changes = false;
+    // Soundpads (by id) linked to this mood. On mood play, each linked pad is
+    // marked "checked" in the Soundpad Manager (see Soundscape.playMood /
+    // setSoundpadsChecked) — empty means "leave the manager's selection as is".
+    linkedSoundpads = [];
 
     constructor(moodConfig, playlist, _status = "stop") {
         utils.log(utils.getCallerInfo(), `MoodConfig:`, constants.LOGLEVEL.INFO);
@@ -46,6 +50,7 @@ export default class MoodConfig {
         this.status = moodConfig.status;
         this.sounds = moodConfig.sounds;
         this.categories = moodConfig?.categories ? moodConfig.categories : [];
+        this.linkedSoundpads = Array.isArray(moodConfig?.linkedSoundpads) ? moodConfig.linkedSoundpads : [];
         this.groups = [];
         if (moodConfig?.groups?.length > 0) {
             for (let i = 0; i < moodConfig.groups.length; i++) {
@@ -123,7 +128,8 @@ export default class MoodConfig {
             status: this.status,
             categories: this.categories,
             groups: this.groups,
-            sounds: this.sounds
+            sounds: this.sounds,
+            linkedSoundpads: this.linkedSoundpads
         }
     }
 
@@ -349,6 +355,36 @@ export default class MoodConfig {
         this.sounds.push(sc);
         this.has_changes = true;
         return sc;
+    }
+
+    /** Link a Soundpad (by id) to this mood — no-op if already linked. */
+    addLinkedSoundpad(padId) {
+        if (this.linkedSoundpads.includes(padId)) return false;
+        this.linkedSoundpads.push(padId);
+        this.has_changes = true;
+        return true;
+    }
+
+    /** Unlink a Soundpad from this mood. */
+    removeLinkedSoundpad(padId) {
+        const i = this.linkedSoundpads.indexOf(padId);
+        if (i < 0) return false;
+        this.linkedSoundpads.splice(i, 1);
+        this.has_changes = true;
+        return true;
+    }
+
+    /**
+     * Resolve linked pad ids against the live Soundpad registry for display —
+     * names/existence are looked up live rather than trusted from storage since
+     * a pad can be renamed or deleted after being linked.
+     */
+    getLinkedSoundpadsView() {
+        const manager = game.soundscapeSoundpads;
+        return this.linkedSoundpads.map(id => {
+            const pad = manager?.getSoundpad(id);
+            return { id, name: pad?.name ?? "(missing)", missing: !pad, color: pad?.color || 0 };
+        });
     }
 
     /** v4: remove a sound entry from this mood (and any group it belonged to). */
@@ -1014,7 +1050,8 @@ export default class MoodConfig {
             status: this.status,
             has_changes: this.has_changes,
             is_selected: isSelected,
-            sounds: isSelected ? this.getOrganizedSounds() : null
+            sounds: isSelected ? this.getOrganizedSounds() : null,
+            linkedSoundpads: isSelected ? this.getLinkedSoundpadsView() : null
         };
     }
 

@@ -40,12 +40,22 @@
   --sa-mood-shadow: rgba(0, 0, 0, 0.35);
   --sa-mood-shadow-hover: rgba(0, 0, 0, 0.65);
   /* Soundpad — Warm Sand (light mode) */
-  --sa-soundpad-shade-6: #221507;
+  --sa-soundpad-shade-6: #4d2c08;
   --sa-soundpad-shade-5: #c68642;
   --sa-soundpad-shade-4: #d9a35e;
   --sa-soundpad-shade-3: #e8c39e;
   --sa-soundpad-shade-2: #f0dcc0;
   --sa-soundpad-shade-1: #faf3e7;
+  --sa-soundpad-shade-active: #8bb90d;
+  /* Soundpad pad-color tags — 8 swatches, tuned for contrast on Warm Sand */
+  --sa-soundpad-color-1: #d62828;
+  --sa-soundpad-color-2: #e8720c;
+  --sa-soundpad-color-3: #b8860b;
+  --sa-soundpad-color-4: #2f9e44;
+  --sa-soundpad-color-5: #0f9b8e;
+  --sa-soundpad-color-6: #1d6fc4;
+  --sa-soundpad-color-7: #7048c9;
+  --sa-soundpad-color-8: #c2255c;
 }
 
 .theme-dark {
@@ -85,12 +95,22 @@
   /* Focus / Accent */
   --sa-focus-ring: #60a5fa;
   /* Soundpad — Midnight Navy (dark mode) */
+  --sa-soundpad-shade-active: #0eb2c1;
   --sa-soundpad-shade-1: #0a0e1a;
   --sa-soundpad-shade-2: #131b2e;
   --sa-soundpad-shade-3: #1c2b45;
-  --sa-soundpad-shade-4: #33465e;
-  --sa-soundpad-shade-5: #52697f;
-  --sa-soundpad-shade-6: #ced8e1;
+  --sa-soundpad-shade-4: #556e8d;
+  --sa-soundpad-shade-5: #99aabb;
+  --sa-soundpad-shade-6: #dee8f0;
+  /* Soundpad pad-color tags — 8 swatches, tuned for contrast on Midnight Navy */
+  --sa-soundpad-color-1: #ff4141;
+  --sa-soundpad-color-2: #fc9c35;
+  --sa-soundpad-color-3: #ffd025;
+  --sa-soundpad-color-4: #63ed7a;
+  --sa-soundpad-color-5: #11d5ce;
+  --sa-soundpad-color-6: #3572e4;
+  --sa-soundpad-color-7: #8465e2;
+  --sa-soundpad-color-8: #e34f83;
 }
 
 .soundscape-ui,
@@ -229,6 +249,36 @@
 .sa-group-controls {
   gap: 15px;
   display: flex;
+}
+
+.sa-linked-soundpad-card {
+  overflow: hidden;
+}
+.sa-linked-soundpad-card > .sa-sound-card-header {
+  position: relative;
+  z-index: 1;
+}
+.sa-linked-soundpad-card.has-color::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(ellipse 70% 80% at 110% 60%, var(--soundpad-pad-color, transparent) 0%, transparent 110%);
+  opacity: 0.35;
+}
+
+.sa-linked-soundpad-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-40%, -30%);
+  display: block;
+  line-height: 1;
+  font-size: 3rem;
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .sa-sound-grid-card {
@@ -479,18 +529,45 @@ input[type=range].sadv::-moz-range-thumb {
   padding: 0;
 }
 
+.soundpad-manager-ui.strip-active .window-header {
+  display: none;
+}
+
+.soundpad-manager-ui.strip-active .soundpad-manager-body {
+  cursor: grab;
+}
+
+.soundpad-manager-ui.strip-active .soundpad-manager-body:active {
+  cursor: grabbing;
+}
+
 .soundpad-manager-body {
+  position: relative;
   display: flex;
+  align-items: flex-start;
   height: 100%;
   min-height: 0;
+  background: var(--sa-soundpad-shade-1);
+}
+.soundpad-manager-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 100% 60%, var(--soundpad-pad-color, transparent) 0%, transparent 110%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.soundpad-manager-body.has-selected-color::before {
+  opacity: 0.35;
 }
 
 .soundpad-pad-list-pane {
+  position: relative;
   flex: 0 0 220px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--sa-soundpad-shade-3);
-  background: var(--sa-soundpad-shade-1);
+  max-height: 100%;
   color: var(--sa-soundpad-shade-5);
   padding: 10px;
   gap: 8px;
@@ -504,14 +581,79 @@ input[type=range].sadv::-moz-range-thumb {
   flex-basis: 0;
   padding-left: 0;
   padding-right: 0;
-  border-right: none;
+  border-right: 1px solid var(--sa-soundpad-shade-3);
 }
 
 .soundpad-grid-topbar {
   flex: 0 0 auto;
   display: flex;
-  padding: 6px 6px 0;
-  background: var(--sa-soundpad-shade-1);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+}
+
+.soundpad-grid-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.soundpad-grid-pager-row {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 0 14px 6px;
+}
+
+.soundpad-pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.soundpad-pager-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sa-soundpad-shade-3);
+  border-radius: var(--sa-radius);
+  background: var(--sa-soundpad-shade-2);
+  color: var(--sa-soundpad-shade-5);
+  cursor: pointer;
+  font-size: 0.65rem;
+}
+.soundpad-pager-btn:hover {
+  background: var(--sa-soundpad-shade-3);
+  color: var(--sa-soundpad-shade-6);
+}
+.soundpad-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.soundpad-pager-btn:disabled:hover {
+  background: var(--sa-soundpad-shade-2);
+  color: var(--sa-soundpad-shade-5);
+}
+
+.soundpad-pager-page {
+  min-width: 1em;
+  text-align: center;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--sa-soundpad-shade-6);
+}
+
+.soundpad-grid-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--sa-soundpad-shade-6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .soundpad-list-toggle {
@@ -548,16 +690,71 @@ input[type=range].sadv::-moz-range-thumb {
   gap: 4px;
 }
 
+.soundpad-list-drawer-toggle {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sa-soundpad-shade-4);
+  cursor: pointer;
+  font-size: 0.6rem;
+}
+.soundpad-list-drawer-toggle:hover {
+  color: var(--sa-soundpad-shade-6);
+}
+
+.soundpad-list-drawer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.15s ease;
+}
+.soundpad-list-drawer.open {
+  max-height: 120px;
+}
+
+.soundpad-search-wrap {
+  position: relative;
+  display: flex;
+}
+
 .soundpad-search {
   width: 100%;
   border-radius: var(--sa-radius);
   border: 1px solid var(--sa-soundpad-shade-3);
-  padding: 4px 8px;
+  padding: 4px 24px 4px 8px;
   background: var(--sa-soundpad-shade-2);
-  color: var(--sa-soundpad-shade-5);
+  color: var(--sa-soundpad-shade-6);
 }
 .soundpad-search::placeholder {
+  color: var(--sa-soundpad-shade-5);
+}
+
+.soundpad-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
   color: var(--sa-soundpad-shade-4);
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+.soundpad-search-clear:hover {
+  color: var(--sa-soundpad-shade-6);
 }
 
 .soundpad-toggle-row {
@@ -594,7 +791,7 @@ input[type=range].sadv::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--sa-soundpad-shade-6);
+  background: var(--sa-soundpad-shade-5);
   transition: transform 0.15s ease;
 }
 
@@ -603,6 +800,7 @@ input[type=range].sadv::-moz-range-thumb {
 }
 .soundpad-only-selected-toggle:checked + .soundpad-toggle-track .soundpad-toggle-knob {
   transform: translateX(12px);
+  background: var(--sa-soundpad-shade-6);
 }
 
 .soundpad-toggle-label {
@@ -613,6 +811,11 @@ input[type=range].sadv::-moz-range-thumb {
   height: 1px;
   background: var(--sa-soundpad-shade-3);
   margin: 0 0 8px;
+}
+
+.soundpad-pad-list-pane > .soundpad-pager {
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .soundpad-pad-list {
@@ -637,7 +840,7 @@ input[type=range].sadv::-moz-range-thumb {
   padding: 6px 8px;
   border-radius: var(--sa-radius);
   cursor: pointer;
-  color: var(--sa-soundpad-shade-6);
+  color: var(--sa-soundpad-shade-5);
   gap: 10px;
 }
 .soundpad-pad-list-item:hover {
@@ -645,7 +848,24 @@ input[type=range].sadv::-moz-range-thumb {
 }
 .soundpad-pad-list-item.active {
   background: var(--sa-soundpad-shade-3);
-  color: var(--sa-soundpad-shade-5);
+  color: var(--sa-soundpad-shade-6);
+}
+.soundpad-pad-list-item.has-color {
+  position: relative;
+  z-index: 0;
+  box-shadow: inset 3px 0 0 0 var(--soundpad-pad-color);
+}
+.soundpad-pad-list-item.has-color::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 100% at 0% 50%, var(--soundpad-pad-color, transparent) 0%, transparent 60%);
+  opacity: 0.35;
+}
+.soundpad-pad-list-item.has-color .soundpad-pad-checkbox-box::after {
+  background: var(--soundpad-pad-color);
 }
 .soundpad-pad-list-item .soundpad-pad-name {
   flex: 1 1 auto;
@@ -661,7 +881,7 @@ input[type=range].sadv::-moz-range-thumb {
 }
 .soundpad-pad-list-item .soundpad-pad-delete {
   flex: 0 0 auto;
-  opacity: 0.6;
+  opacity: 0.4;
   color: var(--sa-audio-muted);
 }
 .soundpad-pad-list-item .soundpad-pad-delete:hover {
@@ -683,23 +903,25 @@ input[type=range].sadv::-moz-range-thumb {
 }
 
 .soundpad-pad-checkbox-box {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
   border: 1px solid var(--sa-soundpad-shade-4);
-  background: var(--sa-soundpad-shade-2);
+  background: transparent;
   position: relative;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition: border-color 0.1s ease;
 }
 .soundpad-pad-checkbox-box::after {
+  content: "";
   position: absolute;
-  left: 1px;
-  top: 1px;
-  width: 8px;
-  height: 8px;
-  border: solid var(--sa-soundpad-shade-1);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sa-soundpad-shade-4);
+  transform: translate(-50%, -50%);
   opacity: 0;
   transition: opacity 0.1s ease;
 }
@@ -709,7 +931,6 @@ input[type=range].sadv::-moz-range-thumb {
 }
 
 .soundpad-pad-checkbox input:checked + .soundpad-pad-checkbox-box {
-  background: var(--sa-soundpad-shade-5);
   border-color: var(--sa-soundpad-shade-5);
 }
 .soundpad-pad-checkbox input:checked + .soundpad-pad-checkbox-box::after {
@@ -728,6 +949,7 @@ input[type=range].sadv::-moz-range-thumb {
 }
 
 .soundpad-grid-pane {
+  position: relative;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -739,26 +961,42 @@ input[type=range].sadv::-moz-range-thumb {
   display: inline-flex;
   flex-direction: column;
   align-self: flex-start;
-  background: var(--sa-soundpad-shade-1);
   max-width: 100%;
 }
+.soundpad-grid-box.strip-mode {
+  flex-direction: row;
+  align-items: stretch;
+}
 
-.soundpad-grid-header {
+.soundpad-strip-list-toggle {
+  align-self: center;
+  margin-right: 8px;
+}
+
+.soundpad-strip-presets {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-self: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  border: 1px solid var(--sa-soundpad-shade-3);
+  border-radius: var(--sa-radius);
+  overflow: hidden;
+  margin-left: 8px;
+}
+.soundpad-strip-presets .soundpad-preset-btn {
+  height: 100%;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 0.65rem;
+  border-right: none;
   border-bottom: 1px solid var(--sa-soundpad-shade-3);
 }
-.soundpad-grid-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--sa-soundpad-shade-6);
+.soundpad-strip-presets .soundpad-preset-btn:last-child {
+  border-bottom: none;
 }
-
-.soundpad-grid-actions {
-  display: flex;
-  gap: 6px;
+.soundpad-strip-presets .soundpad-strip-close-btn:hover {
+  background: var(--color-danger);
+  color: #fff;
 }
 
 .soundpad-preset-group {
@@ -774,7 +1012,7 @@ input[type=range].sadv::-moz-range-thumb {
   border: none;
   border-right: 1px solid var(--sa-soundpad-shade-3);
   background: var(--sa-soundpad-shade-2);
-  color: var(--sa-soundpad-shade-6);
+  color: var(--sa-soundpad-shade-5);
   font-size: 0.75rem;
   cursor: pointer;
 }
@@ -786,7 +1024,7 @@ input[type=range].sadv::-moz-range-thumb {
 }
 .soundpad-preset-btn.active {
   background: var(--sa-soundpad-shade-4);
-  color: var(--sa-soundpad-shade-1);
+  color: var(--sa-soundpad-shade-6);
   font-weight: 600;
 }
 
@@ -812,30 +1050,31 @@ input[type=range].sadv::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   color: var(--sa-soundpad-shade-4);
-  background: var(--sa-soundpad-shade-1);
   text-align: center;
   padding: 24px;
 }
 
 .soundpad-grid {
+  position: relative;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(var(--soundpad-cols, 5), 80px);
-  grid-auto-rows: 80px;
+  grid-template-columns: repeat(var(--soundpad-cols, 4), var(--soundpad-cell-w, 80px));
+  grid-auto-rows: var(--soundpad-cell-h, 80px);
   justify-content: start;
   gap: 8px;
   padding: 14px;
-  width: calc(var(--soundpad-cols, 5) * 80px + (var(--soundpad-cols, 5) - 1) * 8px + 14px * 2);
-  max-height: calc(var(--soundpad-rows, 5) * 80px + (var(--soundpad-rows, 5) - 1) * 8px + 14px * 2);
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: calc(var(--soundpad-cols, 4) * var(--soundpad-cell-w, 80px) + (var(--soundpad-cols, 4) - 1) * 8px + 14px * 2);
+  height: calc(var(--soundpad-rows, 5) * var(--soundpad-cell-h, 80px) + (var(--soundpad-rows, 5) - 1) * 8px + 14px * 2);
   align-content: start;
-  scroll-snap-type: y mandatory;
+}
+.soundpad-grid.preset-10x2 {
+  --soundpad-cell-w: 88px;
+  --soundpad-cell-h: 54px;
 }
 
 .soundpad-cell {
-  width: 80px;
-  height: 80px;
+  width: var(--soundpad-cell-w, 80px);
+  height: var(--soundpad-cell-h, 80px);
   container-type: inline-size;
   scroll-snap-align: start;
   position: relative;
@@ -849,11 +1088,22 @@ input[type=range].sadv::-moz-range-thumb {
   color: var(--sa-soundpad-shade-5);
   cursor: pointer;
   overflow: hidden;
-  transition: box-shadow 0.1s ease, border-color 0.1s ease;
+  transition: border-color 0.1s ease;
+}
+.soundpad-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: box-shadow 0.1s ease;
 }
 .soundpad-cell:hover {
-  border-color: var(--sa-soundpad-shade-5);
-  box-shadow: inset 0 0 0 2px var(--sa-soundpad-shade-5), inset 0 1px 4px rgba(255, 255, 255, 0.25);
+  border-color: var(--sa-soundpad-shade-4);
+}
+.soundpad-cell:hover::after {
+  box-shadow: inset 1px 1px 10px var(--sa-soundpad-shade-5), inset 0 1px 4px rgba(255, 255, 255, 0.25);
 }
 .soundpad-cell.empty {
   background: transparent;
@@ -863,20 +1113,26 @@ input[type=range].sadv::-moz-range-thumb {
 }
 .soundpad-cell.empty:hover {
   border-color: var(--sa-soundpad-shade-3);
+}
+.soundpad-cell.empty:hover::after {
   box-shadow: none;
 }
 .soundpad-cell.playing {
   border-color: var(--sa-audio-active);
-  box-shadow: inset 0 0 0 2px var(--sa-audio-active), inset 0 1px 4px rgba(255, 255, 255, 0.25);
+}
+.soundpad-cell.playing::after {
+  box-shadow: 0px 0px 6px var(--sa-soundpad-shade-active);
 }
 .soundpad-cell.looping {
   border-color: var(--sa-audio-warning);
+}
+.soundpad-cell.looping::after {
   box-shadow: inset 0 0 0 2px var(--sa-audio-warning), inset 0 1px 4px rgba(255, 255, 255, 0.25);
 }
-.soundpad-cell.drop-before {
+.soundpad-cell.drop-before::after {
   box-shadow: inset 3px 0 0 0 var(--sa-focus-ring);
 }
-.soundpad-cell.drop-after {
+.soundpad-cell.drop-after::after {
   box-shadow: inset -3px 0 0 0 var(--sa-focus-ring);
 }
 .soundpad-cell.has-icon {
@@ -889,6 +1145,7 @@ input[type=range].sadv::-moz-range-thumb {
   height: 100%;
   object-fit: cover;
   pointer-events: none;
+  z-index: 0;
 }
 .soundpad-cell .soundpad-cell-caption {
   position: absolute;
@@ -900,13 +1157,13 @@ input[type=range].sadv::-moz-range-thumb {
   line-height: 1.15;
   text-align: center;
   color: var(--sa-soundpad-shade-6);
-  background: color-mix(in srgb, var(--sa-soundpad-shade-1) 75%, transparent);
+  background: color-mix(in srgb, var(--sa-soundpad-shade-1) 90%, transparent);
   overflow: hidden;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
-  opacity: 0.7;
+  opacity: 0.9;
   transition: opacity 0.1s ease;
 }
 .soundpad-cell:hover .soundpad-cell-caption {
@@ -938,11 +1195,18 @@ input[type=range].sadv::-moz-range-thumb {
   filter: drop-shadow(0 0 2px color-mix(in srgb, var(--sa-soundpad-shade-1) 80%, transparent));
 }
 
+.soundpad-grid.preset-10x2 .soundpad-cell .soundpad-cell-caption {
+  font-size: clamp(0.55rem, 13cqi, 0.75rem);
+}
+.soundpad-grid.preset-10x2 .soundpad-cell .soundpad-cell-name {
+  font-size: clamp(0.55rem, 15cqi, 0.85rem);
+}
+
 .soundpad-cell-editor {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 320px;
+  width: 340px;
   max-width: 100%;
 }
 .soundpad-cell-editor .field {
@@ -965,6 +1229,74 @@ input[type=range].sadv::-moz-range-thumb {
 .soundpad-cell-editor .soundpad-cell-editor-header .duration-field {
   flex: 0 0 auto;
   text-align: right;
+}
+.soundpad-cell-editor .sound-icon-wrap {
+  position: relative;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+}
+.soundpad-cell-editor .sound-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 52px !important;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  aspect-ratio: 1/1;
+  box-sizing: border-box;
+  padding: 0;
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+  background: var(--sa-bg-panel, transparent);
+  cursor: pointer;
+  overflow: hidden;
+}
+.soundpad-cell-editor .sound-icon-button .sound-icon {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  object-fit: cover;
+  pointer-events: none;
+}
+.soundpad-cell-editor .sound-icon-reset {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  flex: 0 0 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  aspect-ratio: 1/1;
+  box-sizing: border-box;
+  padding: 0;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+  background: var(--sa-audio-muted, #444);
+  color: #fff;
+  font-size: 0.6rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.soundpad-cell-editor .sound-icon-reset:hover {
+  background: var(--sa-audio-warning, #a33);
+}
+.soundpad-cell-editor .sound-icon-wrap:hover .sound-icon-reset {
+  display: flex;
+  opacity: 1;
 }
 .soundpad-cell-editor .soundpad-duration-readout {
   color: var(--sa-text-secondary);
@@ -992,6 +1324,70 @@ input[type=range].sadv::-moz-range-thumb {
   font-style: italic;
   color: var(--sa-audio-warning);
   font-size: 0.8rem;
+}
+.soundpad-cell-editor .range-field.volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.soundpad-cell-editor .range-field.volume input[type=range] {
+  flex: 1 1 auto;
+}
+.soundpad-cell-editor .range-field.volume .volume-value {
+  flex: 0 0 auto;
+  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+}
+.soundpad-cell-editor .soundpad-preview-button {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+  background: var(--sa-bg-panel, transparent);
+  color: var(--sa-soundpad-shade-5, inherit);
+  cursor: pointer;
+}
+.soundpad-cell-editor .soundpad-preview-button:hover {
+  background: var(--sa-soundpad-shade-3);
+}
+
+.soundpad-color-picker {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: repeat(4, 22px);
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-soundpad-shade-3);
+  background: var(--sa-soundpad-shade-1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.soundpad-color-swatch {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  box-sizing: border-box;
+  padding: 0;
+  border-radius: 5%;
+  border: 2px solid transparent;
+  background: var(--swatch-color);
+  cursor: pointer;
+}
+.soundpad-color-swatch:hover {
+  border-color: var(--sa-soundpad-shade-5);
+}
+.soundpad-color-swatch.active {
+  border-color: var(--sa-soundpad-shade-6);
 }
 
 .sa-sound-grid-mixer {

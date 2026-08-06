@@ -1,0 +1,27 @@
+<section class="sa-group sa-linked-soundpads" data-mood-id="{{@root.selected_mood.id}}">
+    <header class="sa-group-header">
+        <h4 class="divider" style="width: 100%">Linked Soundpads</h4>
+    </header>
+    <div class="sa-category">
+        <div class="sa-sound-grid-card">
+            {{#each linkedSoundpads as |pad|}}
+            <div class="sa-sound-card sa-linked-soundpad-card sa-dataset{{#if pad.missing}} stopped{{/if}}{{#if pad.color}} has-color{{/if}}"
+                data-pad-id="{{pad.id}}"{{#if pad.color}} style="--soundpad-pad-color: var(--sa-soundpad-color-{{pad.color}});"{{/if}}>
+                <i class="fas fa-grid sa-linked-soundpad-icon"></i>
+                <div class="sa-sound-card-header">
+                    <div class="title">{{pad.name}}</div>
+                    <div class="actions">
+                        <button class="sound-control sa-btn-simple" data-tooltip="Unlink Soundpad"
+                            data-action="remove-linked-soundpad" data-pad-id="{{pad.id}}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+            <div class="dragdrop-empty drop-zone" data-drop-zone-type="soundpad-link">
+                Drag and Drop <em>Soundpads</em>
+            </div>
+        </div>
+    </div>
+</section>

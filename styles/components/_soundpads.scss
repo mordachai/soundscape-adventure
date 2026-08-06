@@ -8,25 +8,74 @@ $soundpad-cell-size: 80px;
 $soundpad-cell-gap: 8px;
 $soundpad-grid-padding: 14px;
 
+// Cell width/height default to the same square size, but a grid preset can
+// override them (e.g. 10x2 goes wide-and-short to cut vertical space instead
+// of forcing 20 square tiles into two tall rows).
+$soundpad-cell-w: var(--soundpad-cell-w, #{$soundpad-cell-size});
+$soundpad-cell-h: var(--soundpad-cell-h, #{$soundpad-cell-size});
+
 .soundpad-manager-ui .window-content {
   padding: 0;
 }
 
+// Strip mode (10x2 preset, toggled via .strip-active by SoundpadManagerUI):
+// window chrome (icon/title/menu/close) is removed entirely — the whole app
+// is just the mosaic strip. Dragging is a manual pointer handler on the body
+// (wired in _onRender, since Foundry's own drag listener is bound to the
+// header that no longer exists); closing is the small X button in the
+// strip's right-hand column instead.
+.soundpad-manager-ui.strip-active .window-header {
+  display: none;
+}
+
+.soundpad-manager-ui.strip-active .soundpad-manager-body {
+  cursor: grab;
+}
+
+.soundpad-manager-ui.strip-active .soundpad-manager-body:active {
+  cursor: grabbing;
+}
+
 .soundpad-manager-body {
+  position: relative;
   display: flex;
+  align-items: flex-start;
   height: 100%;
   min-height: 0;
+  background: var(--sa-soundpad-shade-1);
+
+  // Selected pad's color washes the bottom of the whole window — one
+  // continuous gradient spanning both panes (not two separate corner washes)
+  // so there's no seam at the pane boundary. Painted on the shared parent,
+  // under both panes (they're transparent), ::before so it stays under the
+  // real DOM content in paint order.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 80% at 100% 60%,
+      var(--soundpad-pad-color, transparent) 0%,
+      transparent 110%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  &.has-selected-color::before {
+    opacity: 0.35;
+  }
 }
 
 // ---------------------------------------------------------------- pad list
 // The LIST pane is the collapsible side (not the grid) — a thin arrow handle
 // sits between the two panes, matching the wireframe's "▶" collapse affordance.
 .soundpad-pad-list-pane {
+  position: relative;
   flex: 0 0 220px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--sa-soundpad-shade-3);
-  background: var(--sa-soundpad-shade-1);
+  max-height: 100%;
   color: var(--sa-soundpad-shade-5);
   padding: 10px;
   gap: 8px;
@@ -40,7 +89,7 @@ $soundpad-grid-padding: 14px;
   flex-basis: 0;
   padding-left: 0;
   padding-right: 0;
-  border-right: none;
+  border-right: 1px solid var(--sa-soundpad-shade-3);
 }
 
 // Small icon row above the grid title — sole home of the list-collapse
@@ -48,8 +97,80 @@ $soundpad-grid-padding: 14px;
 .soundpad-grid-topbar {
   flex: 0 0 auto;
   display: flex;
-  padding: 6px 6px 0;
-  background: var(--sa-soundpad-shade-1);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+}
+
+.soundpad-grid-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+// Its own thin row under the topbar, centered — kept separate from the
+// title/preset-buttons row so the pager reads as "paging the mosaic below",
+// not another topbar action.
+.soundpad-grid-pager-row {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 0 14px 6px;
+}
+
+// Page-arrow control, shared by the grid pane's pager row and the pad-list pane.
+.soundpad-pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.soundpad-pager-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sa-soundpad-shade-3);
+  border-radius: var(--sa-radius);
+  background: var(--sa-soundpad-shade-2);
+  color: var(--sa-soundpad-shade-5);
+  cursor: pointer;
+  font-size: 0.65rem;
+
+  &:hover {
+    background: var(--sa-soundpad-shade-3);
+    color: var(--sa-soundpad-shade-6);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+
+    &:hover {
+      background: var(--sa-soundpad-shade-2);
+      color: var(--sa-soundpad-shade-5);
+    }
+  }
+}
+
+.soundpad-pager-page {
+  min-width: 1em;
+  text-align: center;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--sa-soundpad-shade-6);
+}
+
+.soundpad-grid-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--sa-soundpad-shade-6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .soundpad-list-toggle {
@@ -88,16 +209,85 @@ $soundpad-grid-padding: 14px;
   gap: 4px;
 }
 
+// Strip mode only: the header + search collapse into a closed-by-default
+// drawer under a thin toggle bar (listHeaderOpen in SoundpadManagerUI), so
+// the pad-list pane stays compact until asked for. Every other preset always
+// renders with .open, so this is a no-op there. Collapsed in-flow (max-height,
+// not position:absolute) so opening it pushes the pad list down instead of
+// covering it.
+.soundpad-list-drawer-toggle {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sa-soundpad-shade-4);
+  cursor: pointer;
+  font-size: 0.6rem;
+
+  &:hover {
+    color: var(--sa-soundpad-shade-6);
+  }
+}
+
+.soundpad-list-drawer {
+  // flex-shrink: 0 matters here — overflow:hidden makes flexbox treat this
+  // item's minimum size as 0 instead of its content size, so without this
+  // the pad-list pane's own height cap (set in _onRender to match the strip's
+  // short grid height) squeezes it to 0 even with .open applied, regardless
+  // of max-height. Letting the pane scroll (it already does) beats that.
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.15s ease;
+
+  &.open {
+    max-height: 120px;
+  }
+}
+
+.soundpad-search-wrap {
+  position: relative;
+  display: flex;
+}
+
 .soundpad-search {
   width: 100%;
   border-radius: var(--sa-radius);
   border: 1px solid var(--sa-soundpad-shade-3);
-  padding: 4px 8px;
+  padding: 4px 24px 4px 8px;
   background: var(--sa-soundpad-shade-2);
-  color: var(--sa-soundpad-shade-5);
+  color: var(--sa-soundpad-shade-6);
 
   &::placeholder {
-    color: var(--sa-soundpad-shade-4);
+    color: var(--sa-soundpad-shade-5);
+  }
+}
+
+.soundpad-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sa-soundpad-shade-4);
+  cursor: pointer;
+  font-size: 0.7rem;
+
+  &:hover {
+    color: var(--sa-soundpad-shade-6);
   }
 }
 
@@ -138,7 +328,7 @@ $soundpad-grid-padding: 14px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--sa-soundpad-shade-6);
+  background: var(--sa-soundpad-shade-5);
   transition: transform 0.15s ease;
 }
 
@@ -147,6 +337,7 @@ $soundpad-grid-padding: 14px;
 
   .soundpad-toggle-knob {
     transform: translateX(12px);
+    background: var(--sa-soundpad-shade-6);
   }
 }
 
@@ -158,6 +349,11 @@ $soundpad-grid-padding: 14px;
   height: 1px;
   background: var(--sa-soundpad-shade-3);
   margin: 0 0 8px;
+}
+
+.soundpad-pad-list-pane > .soundpad-pager {
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .soundpad-pad-list {
@@ -182,7 +378,7 @@ $soundpad-grid-padding: 14px;
   padding: 6px 8px;
   border-radius: var(--sa-radius);
   cursor: pointer;
-  color: var(--sa-soundpad-shade-6);
+  color: var(--sa-soundpad-shade-5);
   gap: 10px;
 
   &:hover {
@@ -191,7 +387,28 @@ $soundpad-grid-padding: 14px;
 
   &.active {
     background: var(--sa-soundpad-shade-3);
-    color: var(--sa-soundpad-shade-5);
+    color: var(--sa-soundpad-shade-6);
+  }
+
+  &.has-color {
+    position: relative;
+    z-index: 0;
+    box-shadow: inset 3px 0 0 0 var(--soundpad-pad-color);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 100% at 0% 50%, var(--soundpad-pad-color, transparent) 0%, transparent 60%);
+      opacity: 0.35;
+    }
+
+    .soundpad-pad-checkbox-box::after {
+      background: var(--soundpad-pad-color);
+    }
   }
 
   .soundpad-pad-name {
@@ -210,7 +427,7 @@ $soundpad-grid-padding: 14px;
 
   .soundpad-pad-delete {
     flex: 0 0 auto;
-    opacity: 0.6;
+    opacity: 0.4;
     color: var(--sa-audio-muted);
 
     &:hover {
@@ -237,24 +454,25 @@ $soundpad-grid-padding: 14px;
 }
 
 .soundpad-pad-checkbox-box {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
   border: 1px solid var(--sa-soundpad-shade-4);
-  background: var(--sa-soundpad-shade-2);
+  background: transparent;
   position: relative;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition: border-color 0.1s ease;
 
   &::after {
-    //content: "";
+    content: "";
     position: absolute;
-    left: 1px;
-    top: 1px;
-    width: 8px;
-    height: 8px;
-    border: solid var(--sa-soundpad-shade-1);
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    left: 50%;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sa-soundpad-shade-4);
+    transform: translate(-50%, -50%);
     opacity: 0;
     transition: opacity 0.1s ease;
   }
@@ -265,7 +483,6 @@ $soundpad-grid-padding: 14px;
 }
 
 .soundpad-pad-checkbox input:checked + .soundpad-pad-checkbox-box {
-  background: var(--sa-soundpad-shade-5);
   border-color: var(--sa-soundpad-shade-5);
 
   &::after {
@@ -292,6 +509,7 @@ $soundpad-grid-padding: 14px;
 // the window is. This is deliberately NOT solved via flex-grow/width:
 // fit-content on the pane itself — that fought the flex layout unreliably.
 .soundpad-grid-pane {
+  position: relative;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -303,27 +521,57 @@ $soundpad-grid-padding: 14px;
   display: inline-flex;
   flex-direction: column;
   align-self: flex-start;
-  background: var(--sa-soundpad-shade-1);
   max-width: 100%;
-}
 
-.soundpad-grid-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--sa-soundpad-shade-3);
-
-  h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: var(--sa-soundpad-shade-6);
+  // Strip mode lays the mosaic and the preset column out side by side instead
+  // of stacked, so the whole thing reads as one horizontal strip.
+  &.strip-mode {
+    flex-direction: row;
+    align-items: stretch;
   }
 }
 
-.soundpad-grid-actions {
+// Permanent left column, replacing the topbar's own list-toggle chevron in
+// strip mode (the topbar itself doesn't render at all in strip mode) — always
+// visible since it's the only way to reach the pad list without hovering the
+// window chrome open.
+.soundpad-strip-list-toggle {
+  align-self: center;
+  margin-right: #{$soundpad-cell-gap};
+}
+
+// Vertical 3-button preset switcher, sat at the right end of the strip in
+// place of the topbar's horizontal button group (moved out of the topbar so
+// it stays reachable without needing the hover-only topbar to be open).
+.soundpad-strip-presets {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  align-self: center;
+  justify-content: space-between;
+  border: 1px solid var(--sa-soundpad-shade-3);
+  border-radius: var(--sa-radius);
+  overflow: hidden;
+  margin-left: #{$soundpad-cell-gap};
+
+  .soundpad-preset-btn {
+    height: 100%;
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 0.65rem;
+    border-right: none;
+    border-bottom: 1px solid var(--sa-soundpad-shade-3);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  // Close button sits above the 3x7/4x5/10x2 buttons in this same column —
+  // danger-colored on hover so it reads as distinct from a preset switch.
+  .soundpad-strip-close-btn:hover {
+    background: var(--color-danger);
+    color: #fff;
+  }
 }
 
 .soundpad-preset-group {
@@ -339,7 +587,7 @@ $soundpad-grid-padding: 14px;
   border: none;
   border-right: 1px solid var(--sa-soundpad-shade-3);
   background: var(--sa-soundpad-shade-2);
-  color: var(--sa-soundpad-shade-6);
+  color: var(--sa-soundpad-shade-5);
   font-size: 0.75rem;
   cursor: pointer;
 
@@ -353,7 +601,7 @@ $soundpad-grid-padding: 14px;
 
   &.active {
     background: var(--sa-soundpad-shade-4);
-    color: var(--sa-soundpad-shade-1);
+    color: var(--sa-soundpad-shade-6);
     font-weight: 600;
   }
 }
@@ -381,35 +629,39 @@ $soundpad-grid-padding: 14px;
   align-items: center;
   justify-content: center;
   color: var(--sa-soundpad-shade-4);
-  background: var(--sa-soundpad-shade-1);
   text-align: center;
   padding: 24px;
 }
 
-// The mosaic hugs exactly cols x rows of cells (per the selected 3x7 / 5x5 /
-// 10x1 preset, via the --soundpad-cols / --soundpad-rows custom properties set
-// inline by SoundpadManagerUI) — it never stretches to fill the pane. More
-// cells than the preset's row count scroll vertically only; width never
-// scrolls.
+// The mosaic hugs exactly cols x rows of cells (per the selected 3x7 / 4x5 /
+// 10x2 preset, via the --soundpad-cols / --soundpad-rows custom properties set
+// inline by SoundpadManagerUI) — it never stretches to fill the pane. Every
+// preset pages at a fixed 20-slot page (see PAGE_SIZE in SoundpadManagerUI),
+// so the grid is always exactly one page: no scrolling.
 .soundpad-grid {
+  position: relative;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(var(--soundpad-cols, 5), #{$soundpad-cell-size});
-  grid-auto-rows: #{$soundpad-cell-size};
+  grid-template-columns: repeat(var(--soundpad-cols, 4), #{$soundpad-cell-w});
+  grid-auto-rows: #{$soundpad-cell-h};
   justify-content: start;
   gap: #{$soundpad-cell-gap};
   padding: #{$soundpad-grid-padding};
-  width: calc(var(--soundpad-cols, 5) * #{$soundpad-cell-size} + (var(--soundpad-cols, 5) - 1) * #{$soundpad-cell-gap} + #{$soundpad-grid-padding} * 2);
-  max-height: calc(var(--soundpad-rows, 5) * #{$soundpad-cell-size} + (var(--soundpad-rows, 5) - 1) * #{$soundpad-cell-gap} + #{$soundpad-grid-padding} * 2);
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: calc(var(--soundpad-cols, 4) * #{$soundpad-cell-w} + (var(--soundpad-cols, 4) - 1) * #{$soundpad-cell-gap} + #{$soundpad-grid-padding} * 2);
+  height: calc(var(--soundpad-rows, 5) * #{$soundpad-cell-h} + (var(--soundpad-rows, 5) - 1) * #{$soundpad-cell-gap} + #{$soundpad-grid-padding} * 2);
   align-content: start;
-  scroll-snap-type: y mandatory;
+
+  // 10x2: wide-and-short tiles instead of 80px squares — same footprint,
+  // less vertical space for the same 20-slot page.
+  &.preset-10x2 {
+    --soundpad-cell-w: 88px;
+    --soundpad-cell-h: 54px;
+  }
 }
 
 .soundpad-cell {
-  width: $soundpad-cell-size;
-  height: $soundpad-cell-size;
+  width: $soundpad-cell-w;
+  height: $soundpad-cell-h;
   container-type: inline-size;
   scroll-snap-align: start;
   position: relative;
@@ -423,13 +675,30 @@ $soundpad-grid-padding: 14px;
   color: var(--sa-soundpad-shade-5);
   cursor: pointer;
   overflow: hidden;
-  transition: box-shadow 0.1s ease, border-color 0.1s ease;
+  transition: border-color 0.1s ease;
+
+  // Inset shadows painted on the cell itself get covered by the cell-icon
+  // <img> (an absolutely-positioned child sits above the parent's own
+  // box-shadow in paint order regardless of z-index). This ::after sits
+  // above the icon and carries every inset ring instead.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    transition: box-shadow 0.1s ease;
+  }
 
   // "Glass" look: an inset ring plus a soft inner highlight, instead of an
   // outer glow, on hover and whenever the cell is audibly running.
   &:hover {
-    border-color: var(--sa-soundpad-shade-5);
-    box-shadow: inset 0 0 0 2px var(--sa-soundpad-shade-5), inset 0 1px 4px rgba(255, 255, 255, 0.25);
+    border-color: var(--sa-soundpad-shade-4);
+
+    &::after {
+      box-shadow: inset 1px 1px 10px var(--sa-soundpad-shade-5), inset 0 1px 4px rgba(255, 255, 255, 0.25);
+    }
   }
 
   &.empty {
@@ -440,28 +709,37 @@ $soundpad-grid-padding: 14px;
 
     &:hover {
       border-color: var(--sa-soundpad-shade-3);
-      box-shadow: none;
+
+      &::after {
+        box-shadow: none;
+      }
     }
   }
 
   &.playing {
     border-color: var(--sa-audio-active);
-    box-shadow: inset 0 0 0 2px var(--sa-audio-active), inset 0 1px 4px rgba(255, 255, 255, 0.25);
+
+    &::after {
+      box-shadow: 0px 0px 6px var(--sa-soundpad-shade-active);
+    }
   }
 
   &.looping {
     border-color: #{$soundpad-loop-accent};
-    box-shadow: inset 0 0 0 2px #{$soundpad-loop-accent}, inset 0 1px 4px rgba(255, 255, 255, 0.25);
+
+    &::after {
+      box-shadow: inset 0 0 0 2px #{$soundpad-loop-accent}, inset 0 1px 4px rgba(255, 255, 255, 0.25);
+    }
   }
 
   // Drag-to-reorder landing indicator: a solid 3px line at the boundary
   // between this cell and its neighbor, on whichever side the dragged cell
   // would land.
-  &.drop-before {
+  &.drop-before::after {
     box-shadow: inset 3px 0 0 0 var(--sa-focus-ring);
   }
 
-  &.drop-after {
+  &.drop-after::after {
     box-shadow: inset -3px 0 0 0 var(--sa-focus-ring);
   }
 
@@ -476,6 +754,7 @@ $soundpad-grid-padding: 14px;
     height: 100%;
     object-fit: cover;
     pointer-events: none;
+    z-index: 0;
   }
 
   .soundpad-cell-caption {
@@ -490,13 +769,13 @@ $soundpad-grid-padding: 14px;
     line-height: 1.15;
     text-align: center;
     color: var(--sa-soundpad-shade-6);
-    background: color-mix(in srgb, var(--sa-soundpad-shade-1) 75%, transparent);
+    background: color-mix(in srgb, var(--sa-soundpad-shade-1) 90%, transparent);
     overflow: hidden;
     white-space: normal;
     overflow-wrap: break-word;
     word-break: break-word;
     hyphens: auto;
-    opacity: 0.7;
+    opacity: 0.9;
     transition: opacity 0.1s ease;
   }
 
@@ -537,6 +816,18 @@ $soundpad-grid-padding: 14px;
   }
 }
 
+// 10x2 preset only: shorter tiles need smaller text so 2-3 word names don't
+// eat the whole cell height.
+.soundpad-grid.preset-10x2 .soundpad-cell {
+  .soundpad-cell-caption {
+    font-size: clamp(0.55rem, 13cqi, 0.75rem);
+  }
+
+  .soundpad-cell-name {
+    font-size: clamp(0.55rem, 15cqi, 0.85rem);
+  }
+}
+
 // ---------------------------------------------------------------- cell editor
 // Fixed-size, non-resizable dialog (see SoundpadManagerUI#_openCellEditDialog) —
 // width is intentionally capped to match the wireframe's compact card, not a
@@ -545,7 +836,7 @@ $soundpad-grid-padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 320px;
+  width: 340px;
   max-width: 100%;
 
   .field {
@@ -572,6 +863,85 @@ $soundpad-grid-padding: 14px;
       flex: 0 0 auto;
       text-align: right;
     }
+  }
+
+  // Icon picker: always a fixed 52x52 square, whether or not a custom icon is
+  // set — the reset ("clear icon") button only appears on hover over the wrap.
+  // Everything here is forced with !important + explicit min/max because core
+  // Foundry's `button.file-picker` css otherwise stretches these to its own
+  // (non-square) dimensions.
+  .sound-icon-wrap {
+    position: relative;
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .sound-icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 52px !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    padding: 0;
+    border-radius: var(--sa-radius);
+    border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+    background: var(--sa-bg-panel, transparent);
+    cursor: pointer;
+    overflow: hidden;
+
+    .sound-icon {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none;
+      object-fit: cover;
+      pointer-events: none;
+    }
+  }
+
+  .sound-icon-reset {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    flex: 0 0 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    padding: 0;
+    line-height: 1;
+    border-radius: 50%;
+    border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+    background: var(--sa-audio-muted, #444);
+    color: #fff;
+    font-size: 0.6rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+
+    &:hover {
+      background: var(--sa-audio-warning, #a33);
+    }
+  }
+
+  .sound-icon-wrap:hover .sound-icon-reset {
+    display: flex;
+    opacity: 1;
   }
 
   .soundpad-duration-readout {
@@ -603,5 +973,81 @@ $soundpad-grid-padding: 14px;
     font-style: italic;
     color: var(--sa-audio-warning);
     font-size: 0.8rem;
+  }
+
+  .range-field.volume {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input[type="range"] {
+      flex: 1 1 auto;
+    }
+
+    .volume-value {
+      flex: 0 0 auto;
+      min-width: 32px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .soundpad-preview-button {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: var(--sa-radius);
+    border: 1px solid var(--sa-soundpad-shade-3, var(--color-border-light-tertiary));
+    background: var(--sa-bg-panel, transparent);
+    color: var(--sa-soundpad-shade-5, inherit);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--sa-soundpad-shade-3);
+    }
+  }
+}
+
+// ------------------------------------------------------------- color picker
+// Small floating swatch popover, opened via right-click on a pad's name in
+// the list (SoundpadManagerUI#_openColorPicker). Appended straight to
+// document.body (not the app's own DOM) so it isn't clipped by the pane's
+// overflow:auto, and positioned at the click coordinates.
+.soundpad-color-picker {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: repeat(4, 22px);
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-soundpad-shade-3);
+  background: var(--sa-soundpad-shade-1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.soundpad-color-swatch {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  box-sizing: border-box;
+  padding: 0;
+  border-radius: 5%;
+  border: 2px solid transparent;
+  background: var(--swatch-color);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--sa-soundpad-shade-5);
+  }
+
+  &.active {
+    border-color: var(--sa-soundpad-shade-6);
   }
 }

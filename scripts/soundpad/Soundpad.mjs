@@ -20,10 +20,14 @@ export default class Soundpad {
     created;
     version = 1;
     path;
+    /** 0 = no highlight; 1-8 indexes into the --sa-soundpad-color-N theme swatches. */
+    color = 0;
     cells = [];
     playlist = null;
     playlistId = "";
     randomSoundManager = new RandomSoundManager();
+    /** Cleanup fns for in-flight _resumeLoopingCells listeners/timers — see stopAllCells(). */
+    #pendingResumes = new Set();
 
     constructor(path) {
         this.id = foundry.utils.randomID(16);
@@ -46,6 +50,7 @@ export default class Soundpad {
         this.name = json.name || this.name;
         this.created = json.created || this.created;
         this.version = json.version ?? this.version;
+        this.color = json.color ?? this.color;
         this.cells = Array.isArray(json.cells) ? json.cells : [];
         this.playlistId = json.playlistId || "";
 
@@ -83,19 +88,37 @@ export default class Soundpad {
         if (!this.playlist) return;
         this.cells.sort((a, b) => a.position - b.position);
         this.cells.forEach((c, i) => { c.position = i; });
+
+        // Batched into at most one update call + one create call per pad load
+        // (instead of up to 2 awaited doc writes per cell) — boot time is when
+        // the static file server / DB is under the heaviest load across every
+        // pad in every world, so N pads x M cells of serial writes adds up fast.
+        const toCreate = [];
+        const updates = [];
         for (const cell of this.cells) {
-            let ps = this.playlist.sounds.get(cell.playlistSoundId);
+            const ps = this.playlist.sounds.get(cell.playlistSoundId);
             if (!ps) {
-                ps = await this._createPlaylistSound(cell.path, cell.name);
-            } else if (ps.name !== cell.name) {
-                // JSON is authoritative on load — a divergence here means the
-                // rename didn't make it to the other side before last shutdown.
-                await ps.update({ name: cell.name });
+                toCreate.push(cell);
+                continue;
             }
-            cell.playlistSoundId = ps.id;
-            if (ps.repeat) {
-                await ps.update({ repeat: false });
-            }
+            const patch = {};
+            // JSON is authoritative on load — a name divergence here means the
+            // rename didn't make it to the other side before last shutdown.
+            if (ps.name !== cell.name) patch.name = cell.name;
+            if (ps.repeat) patch.repeat = false;
+            if (Object.keys(patch).length) updates.push({ _id: ps.id, ...patch });
+        }
+
+        if (updates.length) {
+            await this.playlist.updateEmbeddedDocuments("PlaylistSound", updates);
+        }
+        if (toCreate.length) {
+            const created = await this.playlist.createEmbeddedDocuments("PlaylistSound",
+                toCreate.map(cell => ({ name: cell.name, path: cell.path, volume: 0.8, repeat: false })));
+            toCreate.forEach((cell, i) => { cell.playlistSoundId = created[i].id; });
+        }
+
+        for (const cell of this.cells) {
             if (!cell.libraryId) {
                 const libSound = game.soundscapeLibrary?.findByPath(cell.path);
                 if (libSound) cell.libraryId = libSound.id;
@@ -143,22 +166,32 @@ export default class Soundpad {
             // naturally ends and hands off to the real scheduled job below.
             this.randomSoundManager.jobs.set(`${this.playlist.id}-${cellId}`, { timeoutId: null, config: { soundIds: ps.id } });
             let settled = false;
+            let timeoutId;
+            // Deleting the pad before this ever settles (stopAllCells, see
+            // #pendingResumes) must not later fire playCell() on a torn-down
+            // pad/playlist — cancel the listener/timer outright instead.
+            const cleanup = () => {
+                sound.removeEventListener("end", onEnd);
+                clearTimeout(timeoutId);
+                this.#pendingResumes.delete(cleanup);
+            };
             // Only the natural "end" resumes the loop — a manual stopCell() in the
             // meantime must not trigger a restart via the sound's "stop" event.
             const onEnd = () => {
                 if (settled) return;
                 settled = true;
-                sound.removeEventListener("end", onEnd);
+                cleanup();
                 this.playCell(cellId);
             };
             sound.addEventListener("end", onEnd);
             const maxWaitMs = (sound.duration > 0 ? sound.duration : 30) * 1000 + 1000;
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 if (settled) return;
                 settled = true;
-                sound.removeEventListener("end", onEnd);
+                cleanup();
                 this.playCell(cellId);
             }, maxWaitMs);
+            this.#pendingResumes.add(cleanup);
         }
     }
 
@@ -186,6 +219,7 @@ export default class Soundpad {
                 name: this.name,
                 created: this.created,
                 version: this.version,
+                color: this.color,
                 playlistId: this.playlistId,
                 cells: this.cells
             };
@@ -199,34 +233,31 @@ export default class Soundpad {
 
     /**
      * Snapshot the file as it exists on disk (BEFORE this save's content
-     * overwrites it) to a sibling `.bak.json`, so a bad save (bug, race,
-     * whatever) never means the pad is truly gone — same non-downgrading
-     * pattern as LibraryStore._backupExisting: never replace a backup with
-     * fewer cells than it already has, so a run of bad/empty saves can't
-     * erode the safety net.
+     * overwrites it) to `.backups/<name>.bak.json`, overwriting whatever
+     * backup was already there — so a bad save (bug, race, whatever) never
+     * means the pad is truly gone. Lives in a `.backups` subfolder (not next
+     * to the pad files) so the pad folder itself doesn't double in the file
+     * picker.
      */
     async _backupExisting(dir, filename) {
         try {
             const response = await fetch(`${this.path}?t=${Date.now()}`);
             if (!response.ok) return;
             const current = await response.json();
-            const curCount = Array.isArray(current.cells) ? current.cells.length : 0;
 
-            const bakName = filename.replace(/\.json$/i, '.bak.json');
-            let bakCount = -1;
+            // Normalize first: if `this.path` itself already points at a
+            // `.bak.json` (e.g. loaded back in via "Load existing Soundpad
+            // JSON"), don't stack another `.bak` onto it.
+            const baseName = filename.replace(/\.bak\.json$/i, '.json');
+            const bakName = baseName.replace(/\.json$/i, '.bak.json');
+            const backupDir = `${dir}/.backups`;
+
             try {
-                const bakResponse = await fetch(`${dir}/${bakName}?t=${Date.now()}`);
-                if (bakResponse.ok) {
-                    const bak = await bakResponse.json();
-                    bakCount = Array.isArray(bak.cells) ? bak.cells.length : -1;
-                }
-            } catch { /* no backup yet */ }
-
-            if (curCount >= bakCount) {
-                const blob = new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' });
-                const file = new File([blob], bakName, { type: 'application/json' });
-                await foundry.applications.apps.FilePicker.implementation.upload('data', dir, file, {}, { notify: false });
-            }
+                await foundry.applications.apps.FilePicker.implementation.createDirectory('data', backupDir);
+            } catch { /* already exists */ }
+            const blob = new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' });
+            const file = new File([blob], bakName, { type: 'application/json' });
+            await foundry.applications.apps.FilePicker.implementation.upload('data', backupDir, file, {}, { notify: false });
         } catch (error) {
             utils.log(utils.getCallerInfo(), `Error backing up soundpad ${this.name}:`, constants.LOGLEVEL.ERROR, error);
         }
@@ -249,6 +280,7 @@ export default class Soundpad {
             name,
             icon,
             volume: 0.8,
+            volumeVariation: 0,
             loopMode: "once",
             random: { from: 0, to: 0 },
             interval: 0
@@ -324,7 +356,8 @@ export default class Soundpad {
             ui.notifications.warn(`"${cell.name}" could not be found in the Soundpad playlist.`);
             return;
         }
-        await soundTypeHandlers.playSoundWithFade({ fadeIn: 0, fadeOut: 0, volume: cell.volume }, ps, this.playlist);
+        const volume = utils.randomizedVolume(cell.volume, cell.volumeVariation);
+        await soundTypeHandlers.playSoundWithFade({ fadeIn: 0, fadeOut: 0, volume }, ps, this.playlist);
     }
 
     /** Play using the cell's configured loop mode (falls back to a single play for "once") — the "right-click to loop" behavior. */
@@ -343,6 +376,7 @@ export default class Soundpad {
             from: loop.from,
             to: loop.to,
             volume: cell.volume,
+            volumeVariation: cell.volumeVariation,
             playOnce: false,
             fadeIn: 0,
             fadeOut: 0
@@ -354,8 +388,12 @@ export default class Soundpad {
         if (!cell) return;
         const ps = this._getPlaylistSound(cell);
         if (!ps) return;
+        // stop() already calls playlist.stopSound() when this cell has a running
+        // job — don't also fire it here, ps.playing hasn't caught up to that
+        // in-flight update yet and a second concurrent stopSound() would race it.
+        const wasLooping = this.isCellLooping(cellId);
         this.randomSoundManager.stop(this.playlist.id, ps.id, cellId);
-        if (ps.playing) await this.playlist.stopSound(ps);
+        if (!wasLooping && ps.playing) await this.playlist.stopSound(ps);
     }
 
     isCellLooping(cellId) {
@@ -369,6 +407,7 @@ export default class Soundpad {
     }
 
     stopAllCells() {
+        for (const cleanup of this.#pendingResumes) cleanup();
         for (const cell of this.cells) this.stopCell(cell.id);
     }
 

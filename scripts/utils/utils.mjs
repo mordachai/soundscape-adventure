@@ -62,6 +62,25 @@ async function awaitAudioUnlock() {
     await game.audio.unlock;
 }
 
+/**
+ * Pick a random volume within ± variationPercent of baseVolume (both in the
+ * 0-1 fraction space), clamped to 0-100% before converting back.
+ * @param {number} baseVolume 0-1
+ * @param {number} variationPercent 0-100
+ * @returns {number} 0-1
+ */
+function randomizedVolume(baseVolume, variationPercent) {
+    if (!variationPercent) return baseVolume;
+    const basePercent = baseVolume * 100;
+    const low = Math.max(0, basePercent - variationPercent);
+    const high = Math.min(100, basePercent + variationPercent);
+    const raw = low + Math.random() * (high - low);
+    // Snap to 10% steps (0.1, 0.2, ... 0.9) instead of a smooth continuous
+    // float — discrete jumps read as clearly different, not "samish".
+    const stepped = Math.round(raw / 10) * 10;
+    return Math.min(100, Math.max(0, stepped)) / 100;
+}
+
 async function copyToClipboard(path, target) {
     if (!path) return;
     try {
@@ -84,6 +103,7 @@ async function copyToClipboard(path, target) {
 export default {
     log,
     randomWaitTime,
+    randomizedVolume,
     getCallerInfo,
     copyToClipboard,
     awaitAudioUnlock

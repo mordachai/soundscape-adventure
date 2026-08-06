@@ -109,11 +109,11 @@ Hooks.once('init', () => {
   });
 
   game.settings.register('soundscape-adventure', 'soundpad-grid-preset', {
-    name: "Soundpad grid size preset (3x7 / 5x5 / 10x1)",
+    name: "Soundpad grid size preset (3x7 / 4x5 / 10x2)",
     scope: 'client',
     config: false,
     type: String,
-    default: "5x5",
+    default: "4x5",
   });
 });
 
@@ -151,6 +151,7 @@ Hooks.once('ready', () => {
     'modules/soundscape-adventure/templates/soundscape/parts/sound-card.hbs',
     'modules/soundscape-adventure/templates/soundscape/parts/sound-mixer.hbs',
     'modules/soundscape-adventure/templates/soundscape/parts/sound-category.hbs',
+    'modules/soundscape-adventure/templates/soundscape/parts/linked-soundpads.hbs',
     'modules/soundscape-adventure/templates/soundpad/parts/pad-list-item.hbs',
     'modules/soundscape-adventure/templates/soundpad/parts/grid-cell.hbs'
   ]);
