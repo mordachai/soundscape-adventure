@@ -33,3 +33,42 @@
   gap: 15px;
   display: flex;
 }
+
+// Linked Soundpads cards — reuse .sa-sound-card, decorate with the pad's own
+// color wash (same quadrant gradient as the soundpad manager) plus a big
+// faint grid glyph standing in for "this is a soundpad, not a raw sound".
+.sa-linked-soundpad-card {
+  overflow: hidden;
+
+  > .sa-sound-card-header {
+    position: relative;
+    z-index: 1;
+  }
+
+  &.has-color::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse 70% 80% at 110% 60%,
+      var(--soundpad-pad-color, transparent) 0%,
+      transparent 110%);
+    opacity: 0.35;
+  }
+}
+
+.sa-linked-soundpad-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-40%, -30%);
+  display: block;
+  line-height: 1;
+  font-size: 3.0rem;
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
+}
+

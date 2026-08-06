@@ -1,13 +1,11 @@
 <section class="sa-group {{group.id}}" data-sound-type="{{ group.type }}" data-mood-id="{{@root.selected_mood.id}}">
     <header class="sa-group-header">
         <h4 class="divider" style="width: 100%">{{group.name}} Sounds</h4>
-        {{#ifNotEquals group.name "Soundpad UI"}}
         <div class="sa-group-controls">
             <button class="sa-btn new-category" data-tooltip="Create a new category">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
-        {{/ifNotEquals}}
     </header>
     {{#each group.categories as |category|}}
     <div class="sa-category drop-zone" data-drop-zone-type="{{ category.type }}"

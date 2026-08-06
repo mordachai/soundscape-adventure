@@ -12,10 +12,13 @@
     {{#each library as |sound| }}
     <li class="sa-library-item data-drag sa-dataset" data-from-library="true" data-library-id="{{this.id}}"
         data-mood-id="{{@root.selected_mood.id}}"
-        data-tooltip="Drag into a Loop/Random/Soundpad section to add it to this mood">
+        data-tooltip="Drag into a Loop/Random section to add it to this mood">
         <span class="sa-sound-name" data-full-name="{{sound.name}}">{{sound.name}}</span>
         <button class="sa-btn-simple sound-control" data-tooltip="Preview" data-action="preview-sound">
             <i class="fas fa-play"></i>
+        </button>
+        <button class="sa-btn-simple sound-control" data-tooltip="Copy path" data-action="copy-path" data-path="{{sound.path}}">
+            <i class="fas fa-copy"></i>
         </button>
     </li>
     {{/each}}

@@ -2,7 +2,7 @@ import constants from './utils/constants.mjs';
 import { init as coreInit } from "./regions.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import SoundscapeTab from "./soundscape-tab.mjs";
-import SoundpadUI from "./soundpad-ui.mjs";
+import { openSoundpadManager } from "./soundpad-adventure.mjs";
 import utils from './utils/utils.mjs';
 const cModuleName = "soundscape-adventure";
 /**
@@ -35,6 +35,17 @@ Hooks.on('SoundscapeAdventure-UpdateSidebar', () => {
 // when it changes, reflect renames in loaded soundscapes (and open windows).
 Hooks.on('SoundscapeAdventure-Library-Updated', () => {
     SoundscapeAdventure.syncAllNamesFromLibrary();
+});
+
+// CSS/HBS/JSON hot-swap natively via core. The bundled JS can't be
+// safely re-executed in place (Hooks.on calls would double-register), so
+// force a full reload when the dist bundle changes.
+Hooks.on('hotReload', (data) => {
+    if (data.packageId !== cModuleName) return;
+    if (data.extension === 'js' || data.extension === 'mjs') {
+        window.location.reload();
+        return false;
+    }
 });
 
 // Hooks.on('SBAdventureNewMood', (moodName, mood) => {
@@ -397,11 +408,6 @@ Hooks.once('init', () => {
             title: "Random",
             code: constants.SOUNDTYPE.RANDOM
         });
-        result += options.fn({
-            name: "none",
-            title: "Soundpad",
-            code: constants.SOUNDTYPE.SOUNDPAD
-        });
         return result;
     });
 
@@ -462,41 +468,34 @@ Hooks.once('ready', async () => {
     if (!game.user.isGM) {
         return
     }
-    // TODO identify how to do this in a better way
-    await new Promise(resolve => {
-        const tryUnlock = () => {
-            if (!foundry.audio.AudioHelper.locked) {
-                document.removeEventListener("click", tryUnlock);
-                document.removeEventListener("keydown", tryUnlock);
-                resolve();
-            }
-        };
-
-        document.addEventListener("click", tryUnlock);
-        document.addEventListener("keydown", tryUnlock);
-    });
+    await utils.awaitAudioUnlock();
     const current_soundscapes = await game.settings.get('soundscape-adventure', 'soundscapes');
     utils.log(utils.getCallerInfo(), `Current soundscapes ${current_soundscapes}`, constants.LOGLEVEL.INFO);
     const soundscape_list = current_soundscapes.split(";").map(vPath => vPath.trim()).filter(vPath => vPath.length > 0);
-    const validSoundscapes = [];
+    // Only a confirmed 404 on the HEAD check ever removes a path from settings.
+    // A load failure past that point (network hiccup, boot-time audio-lock
+    // throw, whatever) must NOT prune the entry — that used to permanently
+    // forget a perfectly valid soundscape on the next reload. Same reasoning
+    // as SoundpadManager.init()'s "never rewrite on transient failure" fix.
+    const confirmedMissing = new Set();
     for (const soundscape of soundscape_list) {
         try {
             const response = await fetch(soundscape, { method: 'HEAD' });
 
             if (!response.ok) {
-                // Log or notify about the missing file, but do not stop execution
                 ui.notifications.warn(`Soundscape not found at ${soundscape}. Removing from this world...`);
+                confirmedMissing.add(soundscape);
             } else {
-                // Only load if the file was found
                 await SoundscapeAdventure.loadSoundscape(soundscape);
-                validSoundscapes.push(soundscape);
             }
         } catch (error) {
-            // Catch real fetch errors (e.g., CORS, network issues)
-            ui.notifications.warn(`Error checking soundscape at ${soundscape}. Skipping...`);
+            // Real fetch errors (CORS, network) or a load-time exception — keep
+            // the path in settings and let the next reload retry it.
+            ui.notifications.warn(`Error loading soundscape at ${soundscape}. It stays in settings — check the console, then reload.`);
             console.error(error);
         }
     }
+    const validSoundscapes = soundscape_list.filter(p => !confirmedMissing.has(p));
     await game.settings.set('soundscape-adventure', 'soundscapes', validSoundscapes.join(";"));
     utils.log(utils.getCallerInfo(), `Saving soundscapes ${validSoundscapes.join(";")}`, constants.LOGLEVEL.INFO);
     Hooks.call("SoundscapeAdventure-UpdateSidebar");
@@ -529,30 +528,14 @@ Hooks.on("getSceneControlButtons", (controls) => {
     // Add a tool (button) to the group
     controls.sounds.tools["soundpad"] = {
         name: "soundpad",
-        title: "Soundpad",
-        icon: "fas fa-music",
+        title: "Soundpads",
+        icon: "fas fa-grid-2",
         button: true,
-        //toggle: false, // one-time click
-        visible: true, // or () => true
+        visible: true,
         onChange: async (e, x) => {
-            //ui.notifications.info("Token tool clicked!");
-            if (game.soundscapeAdventure.soundpadUI) {
-                await game.soundscapeAdventure.soundpadUI.render(true);
-                //game.soundscapeAdventure.soundpadUI = null;
-            } else {
-                game.soundscapeAdventure.soundpadUI = new SoundpadUI({ position: { width: 600, height: 600 } });
-                Hooks.call("SoundscapeAdventure-Soundpad-Render");
-            }
+            openSoundpadManager();
         }
     };
-});
-
-Hooks.on("SoundscapeAdventure-Soundpad-Render", async () => {
-    //scene-controls
-    if (game.soundscapeAdventure.soundpadUI) {
-        await game.soundscapeAdventure.soundpadUI.render(true);
-        //game.soundscapeAdventure.soundpadUI.close();
-    }
 });
 
 Hooks.on("soundscape-adventure.mood.playStopMood", (soundscapeId, moodId, mood) => {

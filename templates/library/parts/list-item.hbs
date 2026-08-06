@@ -5,6 +5,9 @@
     <button type="button" class="sa-lib-item__play" data-action="preview" data-tooltip="Preview">
         <i class="fas fa-play"></i>
     </button>
+    <button type="button" class="sa-lib-item__play" data-action="copy-path" data-path="{{path}}" data-tooltip="Copy path">
+        <i class="fas fa-copy"></i>
+    </button>
     <button type="button" class="sa-lib-star {{#if favorite}}is-on{{/if}}" data-action="favorite" data-tooltip="Favorite">
         <i class="fas fa-star"></i>
     </button>
@@ -31,9 +34,6 @@
     {{/if}}
     <button type="button" class="sa-lib-item__pl" data-action="add-to-playlist" data-tooltip="Add to playlist">
         <i class="fas fa-list-music"></i>
-    </button>
-    <button type="button" class="sa-lib-item__copy" data-action="copy-path" data-tooltip="Copy path">
-        <i class="fas fa-copy"></i>
     </button>
     <button type="button" class="sa-lib-item__remove" data-action="remove" data-tooltip="Remove from library">
         <i class="fas fa-trash"></i>

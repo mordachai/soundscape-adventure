@@ -38,6 +38,10 @@ export default class MoodConfig {
     groups = [];
     categories = [];
     has_changes = false;
+    // Soundpads (by id) linked to this mood. On mood play, each linked pad is
+    // marked "checked" in the Soundpad Manager (see Soundscape.playMood /
+    // setSoundpadsChecked) — empty means "leave the manager's selection as is".
+    linkedSoundpads = [];
 
     constructor(moodConfig, playlist, _status = "stop") {
         utils.log(utils.getCallerInfo(), `MoodConfig:`, constants.LOGLEVEL.INFO);
@@ -46,11 +50,8 @@ export default class MoodConfig {
         this.status = moodConfig.status;
         this.sounds = moodConfig.sounds;
         this.categories = moodConfig?.categories ? moodConfig.categories : [];
+        this.linkedSoundpads = Array.isArray(moodConfig?.linkedSoundpads) ? moodConfig.linkedSoundpads : [];
         this.groups = [];
-        const soundpadui = this.categories.filter(el => el.type == constants.SOUNDTYPE.SOUNDPADUI);
-        if (soundpadui.length == 0) {
-            this.categories.push({ id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] })
-        }
         if (moodConfig?.groups?.length > 0) {
             for (let i = 0; i < moodConfig.groups.length; i++) {
                 this.groups.push(new GroupConfig(moodConfig.groups[i]))
@@ -127,7 +128,8 @@ export default class MoodConfig {
             status: this.status,
             categories: this.categories,
             groups: this.groups,
-            sounds: this.sounds
+            sounds: this.sounds,
+            linkedSoundpads: this.linkedSoundpads
         }
     }
 
@@ -355,6 +357,36 @@ export default class MoodConfig {
         return sc;
     }
 
+    /** Link a Soundpad (by id) to this mood — no-op if already linked. */
+    addLinkedSoundpad(padId) {
+        if (this.linkedSoundpads.includes(padId)) return false;
+        this.linkedSoundpads.push(padId);
+        this.has_changes = true;
+        return true;
+    }
+
+    /** Unlink a Soundpad from this mood. */
+    removeLinkedSoundpad(padId) {
+        const i = this.linkedSoundpads.indexOf(padId);
+        if (i < 0) return false;
+        this.linkedSoundpads.splice(i, 1);
+        this.has_changes = true;
+        return true;
+    }
+
+    /**
+     * Resolve linked pad ids against the live Soundpad registry for display —
+     * names/existence are looked up live rather than trusted from storage since
+     * a pad can be renamed or deleted after being linked.
+     */
+    getLinkedSoundpadsView() {
+        const manager = game.soundscapeSoundpads;
+        return this.linkedSoundpads.map(id => {
+            const pad = manager?.getSoundpad(id);
+            return { id, name: pad?.name ?? "(missing)", missing: !pad, color: pad?.color || 0 };
+        });
+    }
+
     /** v4: remove a sound entry from this mood (and any group it belonged to). */
     removeSoundEntry(soundId) {
         this.removeSoundFromAllGroups(soundId);
@@ -382,8 +414,8 @@ export default class MoodConfig {
     /**
      * Find a sound or group by ID
      * Use config.type with constants.SOUNDTYPE to determine what it is:
-     * - Types 0-3: Regular sounds (AMBIENCE, LOOP, RANDOM, SOUNDPAD)
-     * - Types 4-6: Groups (GROUP_LOOP, GROUP_RANDOM, GROUP_SOUNDPAD)
+     * - Types 0-2: Regular sounds (AMBIENCE, LOOP, RANDOM)
+     * - Types 4-5: Groups (GROUP_LOOP, GROUP_RANDOM)
      * @param {string} id - The sound or group ID
      * @returns {SoundConfig|GroupConfig|null}
      */
@@ -879,18 +911,8 @@ export default class MoodConfig {
     // ==========================================
 
     /**
-     * Get library sounds (SOUNDPAD type) sorted by name
-     * @returns {SoundConfig[]} Array of library sounds
-     */
-    getLibrarySounds() {
-        return this.sounds
-            .filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD)
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    /**
      * Get sounds organized for the UI view
-     * Returns sounds grouped by type (Loop, Random, SoundpadUI) with categories
+     * Returns sounds grouped by type (Loop, Random) with categories
      * @returns {Array} Array of sound type sections with categories and sounds
      */
     getOrganizedSounds() {
@@ -908,11 +930,6 @@ export default class MoodConfig {
                 type: constants.SOUNDTYPE.RANDOM,
                 name: "Random",
                 categories: this._getCategoriesForType(constants.SOUNDTYPE.RANDOM)
-            },
-            {
-                type: constants.SOUNDTYPE.SOUNDPADUI,
-                name: "Soundpad UI",
-                categories: this._getCategoriesForType(constants.SOUNDTYPE.SOUNDPADUI)
             }
         ];
 
@@ -993,12 +1010,6 @@ export default class MoodConfig {
             let sectionIndex = 0;
             if (soundClone.type === constants.SOUNDTYPE.RANDOM) {
                 sectionIndex = 1;
-            } else if (soundClone.type === constants.SOUNDTYPE.SOUNDPAD ||
-                       soundClone.type === constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-                // Skip library sounds - they go in the library panel
-                continue;
-            } else if (soundClone.type === constants.SOUNDTYPE.SOUNDPADUI) {
-                sectionIndex = 2;
             }
 
             // Find category index
@@ -1039,7 +1050,8 @@ export default class MoodConfig {
             status: this.status,
             has_changes: this.has_changes,
             is_selected: isSelected,
-            sounds: isSelected ? this.getOrganizedSounds() : null
+            sounds: isSelected ? this.getOrganizedSounds() : null,
+            linkedSoundpads: isSelected ? this.getLinkedSoundpadsView() : null
         };
     }
 

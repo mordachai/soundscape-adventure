@@ -1,4 +1,5 @@
 import { HOOK_LIBRARY_UPDATED } from "../SoundLibrary.mjs";
+import utils from "../../utils/utils.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const TPL = "modules/soundscape-adventure/templates/library";
@@ -450,13 +451,13 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
             case "duplicates": return this.#findDuplicates();
             case "refresh": return this.#refresh();
             case "preview": return this.#togglePreview(el.closest("[data-id]")?.dataset.id);
+            case "copy-path": return utils.copyToClipboard(el.dataset.path, el);
             case "add-to-playlist": return this.#addToPlaylist(el.closest("[data-id]")?.dataset.id);
             case "add-results": return this.#addFilteredToPlaylist();
             case "favorite": return void this.library.toggleFavorite(el.closest("[data-id]")?.dataset.id);
             case "toggle-favorites":
                 this.#favoritesOnly = !this.#favoritesOnly;
                 return this.render(false);
-            case "copy-path": return this.#copyPath(el.closest("[data-id]")?.dataset.id);
             case "remove": return this.#removeSound(el.closest("[data-id]")?.dataset.id);
             case "remove-folder": return this.#removeFolder(el.dataset.path);
             case "folder-to-playlist": return this.#folderToPlaylist(el.dataset.path);
@@ -893,15 +894,6 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
         }
     }
 
-    /** Copy a sound's file path to the clipboard. */
-    async #copyPath(id) {
-        if (!id) return;
-        const sound = this.library.getById(id);
-        if (!sound?.path) return;
-        game.clipboard.copyPlainText(sound.path);
-        ui.notifications.info(`Path copied: ${sound.path}`);
-    }
-
     async #removeSound(id) {
         if (!id) return;
         const sound = this.library.getById(id);
@@ -1248,7 +1240,7 @@ export default class LibraryApp extends HandlebarsApplicationMixin(ApplicationV2
                 walk(d, depth + 1, path);
             }
             for (const f of [...node.files].sort((a, b) => a.name.localeCompare(b.name))) {
-                rows.push({ isDir: false, id: f.id, name: f.name, favorite: f.favorite, missing: f.missing, missingReason: f.missingReason, indent, path: prefix });
+                rows.push({ isDir: false, id: f.id, name: f.name, favorite: f.favorite, missing: f.missing, missingReason: f.missingReason, indent, path: prefix, filePath: f.path });
             }
             for (const f of node.ignoredFiles.sort((a, b) => a.name.localeCompare(b.name))) {
                 rows.push({ isDir: false, ignored: true, name: f.name, fullPath: f.fullPath, indent, path: prefix });

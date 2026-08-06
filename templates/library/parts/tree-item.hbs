@@ -31,9 +31,12 @@
         data-tooltip="Stop ignoring this file"><i class="fas fa-rotate-left"></i></button>
 </div>
 {{else}}
-<div class="sa-lib-tree__file {{#if missing}}is-missing{{/if}}" style="padding-left:{{indent}}px" data-id="{{id}}" data-path="{{path}}" draggable="true">
+<div class="sa-lib-tree__file {{#if missing}}is-missing{{/if}}" style="padding-left:{{indent}}px" data-id="{{id}}" data-path="{{filePath}}" draggable="true">
     <button type="button" class="sa-lib-item__play" data-action="preview" data-tooltip="Preview">
         <i class="fas fa-play"></i>
+    </button>
+    <button type="button" class="sa-lib-item__play" data-action="copy-path" data-path="{{filePath}}" data-tooltip="Copy path">
+        <i class="fas fa-copy"></i>
     </button>
     <button type="button" class="sa-lib-star {{#if favorite}}is-on{{/if}}" data-action="favorite"
         data-tooltip="Favorite">
@@ -45,9 +48,6 @@
     {{/if}}
     <button type="button" class="sa-lib-item__pl" data-action="add-to-playlist" data-tooltip="Add to playlist">
         <i class="fas fa-list-music"></i>
-    </button>
-    <button type="button" class="sa-lib-item__copy" data-action="copy-path" data-tooltip="Copy path">
-        <i class="fas fa-copy"></i>
     </button>
     <button type="button" class="sa-lib-item__remove" data-action="remove" data-tooltip="Remove from library">
         <i class="fas fa-trash"></i>

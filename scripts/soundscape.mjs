@@ -3,6 +3,7 @@ import constants from "./utils/constants.mjs";
 import utils from "./utils/utils.mjs";
 import { RandomSoundManager } from './RandomSoundManager.mjs';
 import { getHandler } from './soundTypeHandlers.mjs';
+import { activateLinkedSoundpads } from './soundpad-adventure.mjs';
 
 
 //TODO new behavior:
@@ -97,7 +98,14 @@ export default class Soundscape {
             this.moods[key] = moodConfig;
             if (moods[key].status == constants.STATUS.MOOD.PLAYING) {
                 this.activeMoodId = key;
-                await this.playMood(key);
+                try {
+                    await this.playMood(key);
+                } catch (error) {
+                    // A failed autoplay (e.g. audio still locked) must not abort this
+                    // loop — that used to drop every mood after this one out of
+                    // this.moods entirely, since they'd never get assigned above.
+                    utils.log(utils.getCallerInfo(), `Failed to autoplay mood ${key} for soundscape ${this.name}`, constants.LOGLEVEL.ERROR, error);
+                }
             }
         }
         if (has_changes) {
@@ -382,9 +390,7 @@ export default class Soundscape {
             //_soundsConfig.active_groups = [];
             _soundsConfig.categories = [
                 { id: "", name: "None", type: constants.SOUNDTYPE.LOOP, collapsed: false, sounds: [] },
-                { id: "", name: "None", type: constants.SOUNDTYPE.RANDOM, collapsed: false, sounds: [] },
-                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPAD, collapsed: false, sounds: [] },
-                { id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] }
+                { id: "", name: "None", type: constants.SOUNDTYPE.RANDOM, collapsed: false, sounds: [] }
             ]
 
         }
@@ -472,11 +478,15 @@ export default class Soundscape {
         if (this.moods[moodId]) {
             const sounds = await this.moods[moodId].getSoundsToPlay();
             this.moods[moodId].status = constants.STATUS.MOOD.PLAYING;
+            // Linked Soundpads: select exactly them in the Soundpad Manager (any
+            // other pad gets deselected) and switch "Only selected" on. Empty list
+            // = leave the manager's current selection/filter untouched.
+            activateLinkedSoundpads(this.moods[moodId].linkedSoundpads);
             // configure sound before playing
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
-                    if (sounds[i].type == constants.SOUNDTYPE.GROUP_SOUNDPAD || sounds[i].type == constants.SOUNDTYPE.RANDOM || sounds[i].type == constants.SOUNDTYPE.GROUP_RANDOM) {
+                    if (sounds[i].type == constants.SOUNDTYPE.RANDOM || sounds[i].type == constants.SOUNDTYPE.GROUP_RANDOM) {
                         await s.update({ repeat: false });
                     } else {
                         await s.update({ repeat: true });
@@ -491,8 +501,8 @@ export default class Soundscape {
             const groups = await this.moods[moodId].getGroupsToPlay();
             for (let i = 0; i < groups.length; i++) {
                 // Intensity loop groups play their current member directly; every
-                // other group (random, soundpad, and sequential loop groups) goes
-                // through the type handler.
+                // other group (random and sequential loop groups) goes through the
+                // type handler.
                 if (groups[i].type == constants.SOUNDTYPE.GROUP_LOOP && !groups[i].isSequential()) {
                     await this._playLoopGroup(groups[i], moodId);
                 } else {
@@ -516,7 +526,6 @@ export default class Soundscape {
             //     if (ps) await applyFadeIn(gc, ps);
             // }
         }
-        //Hooks.call("SoundscapeAdventure-Soundpad-Render");
     }
 
     async deleteMood(moodId) {
@@ -581,10 +590,6 @@ export default class Soundscape {
                 }
             }
             await this.stopSound(sounds[i], moodId, true);
-        }
-        const soundpadSounds = await this.moods[moodId].sounds.filter(obj => obj.type == constants.SOUNDTYPE.SOUNDPADUI);
-        for (let i = 0; i < soundpadSounds.length; i++) {
-            await this.stopSound(soundpadSounds[i], moodId, true);
         }
 
         const groups = await this.moods[moodId].getGroupsToPlay();
@@ -778,9 +783,7 @@ export default class Soundscape {
         if (mood.isPlaying()) {
             if (newVolume == 0) {
                 this.stopSound(soundConfig, moodId);
-            } else if (oldVolume == 0 && newVolume > 0 &&
-                soundConfig.type != constants.SOUNDTYPE.SOUNDPADUI &&
-                soundConfig.type != constants.SOUNDTYPE.SOUNDPAD) {
+            } else if (oldVolume == 0 && newVolume > 0) {
                 this.playSound(soundConfig, moodId);
             }
         }
@@ -836,10 +839,6 @@ export default class Soundscape {
         const mood = this.moods[moodId];
         if (!mood) return;
 
-        const isPlayingMood = mood.status === constants.STATUS.MOOD.PLAYING;
-        const isSoundpad = soundConfig.type === constants.SOUNDTYPE.SOUNDPADUI;
-
-        if (!isPlayingMood && isSoundpad) return;
         if (soundConfig.volume == 0) {
             ui.notifications.warn(`The Sound ${soundConfig.name} is muted. Change the volume before hitting play.`);
         }
@@ -978,9 +977,6 @@ export default class Soundscape {
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
-                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                        this.playlist.stopSound(s);
-                    }
                     s.update({ repeat: false });
                 }
                 sounds[i].repeat = false;
@@ -995,9 +991,6 @@ export default class Soundscape {
             for (let i = 0; i < sounds.length; i++) {
                 const s = this.playlist.sounds.get(sounds[i].id);
                 if (s) {
-                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                        this.playlist.stopSound(s);
-                    }
                     s.update({ repeat: true });
                 }
                 sounds[i].repeat = true;
@@ -1006,33 +999,6 @@ export default class Soundscape {
             }
             // Re-pick the current sound for a loop group based on its intensity.
             if (isGroup) group._adjustIntensity();
-        } else if (targetType == constants.SOUNDTYPE.SOUNDPAD) {
-            for (let i = 0; i < sounds.length; i++) {
-                const s = this.playlist.sounds.get(sounds[i].id);
-                if (s) {
-                    if (sounds[i].type == constants.SOUNDTYPE.SOUNDPADUI && s.playing) {
-                        this.playlist.stopSound(s);
-                    }
-                    s.update({ repeat: false });
-                }
-                sounds[i].repeat = false;
-                sounds[i].type = constants.SOUNDTYPE.SOUNDPAD;
-                sounds[i].category = category ? category : "";
-            }
-        } else if (targetType == constants.SOUNDTYPE.SOUNDPADUI) {
-            for (let i = 0; i < sounds.length; i++) {
-                const s = this.playlist.sounds.get(sounds[i].id);
-                if (s) {
-                    s.update({ repeat: false });
-                    this.playlist.stopSound(s);
-                }
-                if (sounds[i].type == constants.SOUNDTYPE.RANDOM || sounds[i].type == constants.SOUNDTYPE.GROUP_RANDOM) {
-                    this.randomSoundManager.stop(this.playlistId, sounds[i].id);
-                }
-                sounds[i].repeat = false;
-                sounds[i].type = constants.SOUNDTYPE.SOUNDPADUI;
-                sounds[i].category = "";
-            }
         }
     }
 
@@ -1072,6 +1038,27 @@ export default class Soundscape {
         }
 
         mood.addLibrarySound({ playlistSoundId: ps.id, libraryId, name: libSound.name, path: libSound.path, type, category });
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
+    /** Link a Soundpad to a mood (dragged in from the Soundpad Manager's pad list). */
+    async addLinkedSoundpadToMood(moodId, padId, padName = "") {
+        const mood = this.moods[moodId];
+        if (!mood || !padId) return;
+        if (!mood.addLinkedSoundpad(padId)) {
+            ui.notifications.info(`"${padName || padId}" is already linked to this mood.`);
+            return;
+        }
+        await this.saveMoodsConfig();
+        if (this.openUI) this.openUI.render(true);
+    }
+
+    /** Unlink a Soundpad from a mood. */
+    async removeLinkedSoundpadFromMood(moodId, padId) {
+        const mood = this.moods[moodId];
+        if (!mood) return;
+        mood.removeLinkedSoundpad(padId);
         await this.saveMoodsConfig();
         if (this.openUI) this.openUI.render(true);
     }
@@ -1577,7 +1564,7 @@ export default class Soundscape {
         } catch {
             return;
         }
-        if (newMood.length < 2) {
+        if (!newMood || newMood.length < 2) {
             ui.notifications.warn("Error cloning a mood.");
             return;
         } else {
@@ -1605,7 +1592,7 @@ export default class Soundscape {
         } catch {
             return;
         }
-        if (newMoodName.trim() === "") {
+        if (!newMoodName || newMoodName.trim() === "") {
             ui.notifications.warn("You must provide a name for the new mood.");
             return;
         } else {

@@ -1,0 +1,79 @@
+<div class="soundpad-cell-editor">
+    <div class="soundpad-cell-editor-header">
+        <div class="field icon-field">
+            <label>Icon</label>
+            <input type="text" id="icon" name="icon" placeholder="Select an icon" value="{{cell.icon}}"
+                data-dtype="String" style="display: none" />
+            <div class="sound-icon-wrap">
+                <button type="button" class="file-picker sound-icon-button" data-type="image" data-target="input[name='icon']"
+                    tabindex="-1" title="Browse Files">
+                    {{#ifNotEquals cell.icon ''}}
+                    <img class="sound-icon" src="{{cell.icon}}" />
+                    {{else}}
+                    <i class="fas fa-volume-high" data-tooltip="Cell icon"></i>
+                    {{/ifNotEquals}}
+                </button>
+                <button type="button" class="sound-icon-reset" tabindex="-1" title="Remove icon"
+                    {{#ifEquals cell.icon ''}}style="display: none"{{/ifEquals}}>
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="field name-field">
+            <label>Name</label>
+            <input type="text" id="name" name="name" value="{{cell.name}}">
+        </div>
+
+        <div class="field duration-field">
+            <label>Duration</label>
+            <span class="soundpad-duration-readout">{{durationLabel}}</span>
+        </div>
+    </div>
+
+    <div class="field">
+        <label>Loop Mode</label>
+        <select name="loopMode" id="loopMode">
+            <option value="once" {{#ifEquals cell.loopMode "once"}}selected{{/ifEquals}}>Play once</option>
+            <option value="simple" {{#ifEquals cell.loopMode "simple"}}selected{{/ifEquals}}>Loop simple</option>
+            <option value="random" {{#ifEquals cell.loopMode "random"}}selected{{/ifEquals}}>Loop random</option>
+            <option value="interval" {{#ifEquals cell.loopMode "interval"}}selected{{/ifEquals}}>Loop interval</option>
+        </select>
+    </div>
+
+    <div class="soundpad-random-fields" {{#ifNotEquals cell.loopMode "random"}}style="display:none"{{/ifNotEquals}}>
+        <div class="field">
+            <label>Min time (seconds)</label>
+            <input type="number" name="randomFrom" id="randomFrom" min="0" step="1" value="{{cell.random.from}}">
+        </div>
+        <div class="field">
+            <label>Max time (seconds)</label>
+            <input type="number" name="randomTo" id="randomTo" min="0" step="1" value="{{cell.random.to}}">
+        </div>
+        <div class="field">
+            <label>Volume Variation (%)</label>
+            <input type="number" name="volumeVariation" id="volumeVariation" min="0" max="100" step="1" value="{{cell.volumeVariation}}">
+        </div>
+        <p class="soundpad-hint">Randomly plays the sound, until its end, at an interval between Min and Max. Volume varies ± Variation% each time.</p>
+        <p class="soundpad-validation-warning" style="display:none"></p>
+    </div>
+
+    <div class="soundpad-interval-fields" {{#ifNotEquals cell.loopMode "interval"}}style="display:none"{{/ifNotEquals}}>
+        <div class="field">
+            <label>Interval (seconds)</label>
+            <input type="number" name="interval" id="interval" min="0" step="1" value="{{cell.interval}}">
+        </div>
+        <p class="soundpad-hint">Plays again this many seconds after the sound ends.</p>
+    </div>
+
+    <div class="field">
+        <label>Volume</label>
+        <div class="range-field volume">
+            <input type="range" min="0" max="1" step="0.05" class="sadv volume-range" name="volume" value="{{cell.volume}}">
+            <span class="value volume-value">{{volumePercent}}%</span>
+            <button type="button" class="soundpad-preview-button" tabindex="-1" title="Preview sound (only you can hear this)">
+                <i class="fas fa-play"></i>
+            </button>
+        </div>
+    </div>
+</div>

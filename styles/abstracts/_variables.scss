@@ -70,6 +70,25 @@
 
   --sa-mood-shadow: rgba(0, 0, 0, 0.35);
   --sa-mood-shadow-hover: rgba(0, 0, 0, 0.65);
+
+  /* Soundpad — Warm Sand (light mode) */
+  --sa-soundpad-shade-6: #4d2c08;
+  --sa-soundpad-shade-5: #c68642;
+  --sa-soundpad-shade-4: #d9a35e;
+  --sa-soundpad-shade-3: #e8c39e;
+  --sa-soundpad-shade-2: #f0dcc0;
+  --sa-soundpad-shade-1: #faf3e7;
+  --sa-soundpad-shade-active: #8bb90d;
+
+  /* Soundpad pad-color tags — 8 swatches, tuned for contrast on Warm Sand */
+  --sa-soundpad-color-1: #d62828;
+  --sa-soundpad-color-2: #e8720c;
+  --sa-soundpad-color-3: #b8860b;
+  --sa-soundpad-color-4: #2f9e44;
+  --sa-soundpad-color-5: #0f9b8e;
+  --sa-soundpad-color-6: #1d6fc4;
+  --sa-soundpad-color-7: #7048c9;
+  --sa-soundpad-color-8: #c2255c;
 }
 
 .theme-dark {
@@ -116,4 +135,23 @@
 
   /* Focus / Accent */
   --sa-focus-ring: #60a5fa;
+
+  /* Soundpad — Midnight Navy (dark mode) */
+  --sa-soundpad-shade-active: #0eb2c1;
+  --sa-soundpad-shade-1: #0a0e1a;
+  --sa-soundpad-shade-2: #131b2e;
+  --sa-soundpad-shade-3: #1c2b45;
+  --sa-soundpad-shade-4: #556e8d;
+  --sa-soundpad-shade-5: #99aabb;
+  --sa-soundpad-shade-6: #dee8f0;
+
+  /* Soundpad pad-color tags — 8 swatches, tuned for contrast on Midnight Navy */
+  --sa-soundpad-color-1: #ff4141;
+  --sa-soundpad-color-2: #fc9c35;
+  --sa-soundpad-color-3: #ffd025;
+  --sa-soundpad-color-4: #63ed7a;
+  --sa-soundpad-color-5: #11d5ce;
+  --sa-soundpad-color-6: #3572e4;
+  --sa-soundpad-color-7: #8465e2;
+  --sa-soundpad-color-8: #e34f83;
 }

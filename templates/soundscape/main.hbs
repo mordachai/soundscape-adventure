@@ -2,8 +2,11 @@
     {{> "modules/soundscape-adventure/templates/soundscape/parts/left-menu.hbs" moods=moods }}
         <!-- CENTER: Sound Groups -->
         <main class="sa-content">
+            {{#if selected_mood}}
             {{#each selected_mood.sounds as |group|}}
             {{> "modules/soundscape-adventure/templates/soundscape/parts/sound-group.hbs" group=group}}
             {{/each}}
+            {{> "modules/soundscape-adventure/templates/soundscape/parts/linked-soundpads.hbs" linkedSoundpads=selected_mood.linkedSoundpads}}
+            {{/if}}
         </main>
     </div>

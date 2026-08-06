@@ -197,6 +197,12 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 this.soundscape.addLibrarySoundToMood(moodId, data.libraryId, type, dropZone.dataset?.dropZoneCategory);
                 return; // addLibrarySoundToMood saves + re-renders
             }
+            if (data.type === "soundpad-link") {
+                // A Soundpad dragged in from the Soundpad Manager's pad list →
+                // link it to the currently displayed mood.
+                this.soundscape.addLinkedSoundpadToMood(this.currentMoodOnUI, data.padId, data.padName);
+                return; // addLinkedSoundpadToMood saves + re-renders
+            }
             this.soundscape.moveSound(data.soundId, data.moodId, dropZone.dataset.dropZoneType, dropZone.dataset?.dropZoneCategory);
             this.soundscape.markMoodAsChanged(data.moodId);
         }
@@ -210,7 +216,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             content.scrollTop = this.scrollTop;
 
         // Stop propagation of drag and drop in volume controls
-        this.element.querySelectorAll('.soundpad-volume-container, .compact-volume-control').forEach(container => {
+        this.element.querySelectorAll('.compact-volume-control').forEach(container => {
             // Set draggable to false
             container.setAttribute('draggable', 'false');
 
@@ -229,9 +235,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         // Add document-level event delegation as a fallback
         document.addEventListener('mousedown', (e) => {
-            if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
-                e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
-                const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
+            if (e.target.matches('.compact-volume-slider, .compact-intensity-slider') ||
+                e.target.closest('.compact-volume-control')) {
+                const box = e.target.closest('.soundscape-sound-card');
                 box.draggable = false;
                 e.stopPropagation();
                 e.stopImmediatePropagation();
@@ -239,9 +245,9 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         }, true);
 
         document.addEventListener('mouseup', (e) => {
-            if (e.target.matches('.soundpad-volume-slider, .compact-volume-slider, .compact-intensity-slider') ||
-                e.target.closest('.soundpad-volume-container, .compact-volume-control')) {
-                const box = e.target.closest('.soundpad-list-item, .soundscape-sound-card');
+            if (e.target.matches('.compact-volume-slider, .compact-intensity-slider') ||
+                e.target.closest('.compact-volume-control')) {
+                const box = e.target.closest('.soundscape-sound-card');
                 box.draggable = true;
                 e.preventDefault();
                 e.stopPropagation();
@@ -375,6 +381,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                 const content = this.element.querySelector('.sa-content');
                 this.scrollTop = content?.scrollTop ?? 0;
                 const action = button.dataset.action;
+                if (action === "copy-path") return utils.copyToClipboard(button.dataset.path, button);
                 // Find the closest parent with data attributes
                 const parent = button.closest(".sa-dataset");
                 const moodId = parent.dataset.moodId;
@@ -409,13 +416,6 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                     //     break;
                     case "volume":
                         await this.soundscape.changeSoundVolume(moodId, soundId, button.value, soundType);
-                        // if (
-                        //     ((button.value == 0 && button.dataset.currentValue != 0) || (button.value != 0 && button.dataset.currentValue== 0))
-                        //     &&
-                        //     parseInt(button.dataset?.soundType) != constants.SOUNDTYPE.SOUNDPADUI
-                        // ) {
-                        //     this.soundscape.enableDisableSound(moodId, soundId);
-                        // }
                         break;
                     case "intensity":
                         this.soundscape.changeSoundIntensity(moodId, soundId, button.value);
@@ -425,51 +425,21 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
                         return;
                         break;
                     case "remove-sound":
-                        await this.soundscape.removeSoundFromMood(moodId, soundId);
+                        // Group cards reuse this same trash button/action with the
+                        // group's own id as soundId — removeSoundFromMood only
+                        // understands plain sound ids (its getSound() fallback
+                        // resolves a group id to the group's *current member sound*,
+                        // not the group), so it silently no-ops on groups while still
+                        // saving. Route groups to deleteGroup instead.
+                        if (soundType == constants.SOUNDTYPE.GROUP_LOOP
+                            || soundType == constants.SOUNDTYPE.GROUP_RANDOM
+                            || soundType == constants.SOUNDTYPE.GROUP_SOUNDPAD) {
+                            await this.soundscape.deleteGroup(moodId, soundId);
+                        } else {
+                            await this.soundscape.removeSoundFromMood(moodId, soundId);
+                        }
                         this.myRender(true);
                         return;
-                    case "play":
-                        if (!this.soundscape.moods[moodId].isPlaying()) {
-                            ui.notifications.warn("You need to start the mood before you can play a soundpad sound.");
-                            return;
-                        }
-                        const sound = await this.soundscape.moods[moodId].getSound(soundId);
-                        if (sound.type == constants.SOUNDTYPE.SOUNDPADUI) {
-                            const i = button.querySelector("i");
-                            i.className = "fas fa-stop";
-                            button.dataset.action = "stop";
-                            const s = this.soundscape.playlist.sounds.get(sound.id);
-                            await s.load();
-                            await this.soundscape.playSound(sound, moodId);
-
-                            const previewEndEvent = () => {
-                                s.sound.removeEventListener('end', previewEndEvent);
-                                s.sound.removeEventListener('stop', previewEndEvent);
-                                i.className = "fas fa-play";
-                                button.dataset.action = "play";
-                                //this.soundscape.stopSound(sound, moodId);
-                            };
-                            s.sound.addEventListener(
-                                'end', previewEndEvent
-                            );
-                            s.sound.addEventListener(
-                                'stop', previewEndEvent
-                            );
-                            return;
-
-                        }
-                        break;
-                    case "stop":
-                        const sounds = await this.soundscape.moods[moodId].getSound(soundId);
-
-                        const i = button.querySelector("i");
-                        if (sounds.type == constants.SOUNDTYPE.SOUNDPADUI) {
-                            i.className = "fas fa-play";
-                            button.dataset.action = "play";
-                            this.soundscape.stopSound(sounds, moodId);
-                            return;
-                        }
-                        break;
                     case "preview-sound":
                         const soundToPreview = this.soundscape.moods[moodId].getSound(soundId);
                         const soundToPlay = this.soundscape.playlist.sounds.get(soundToPreview.id);
@@ -515,13 +485,12 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
             });
         });
 
-        // block dragging of soundscape sounds
-        this.element.querySelectorAll('.soundpad-volume-slider').forEach(slider => {
-            slider.addEventListener('mousedown', e => {
-                e.stopPropagation(); // Prevent drag start bubbling up
-            });
-            slider.addEventListener('click', e => {
-                e.preventDefault(); // Disable dragging the whole element
+        // Linked Soundpad controls
+        this.element.querySelectorAll('[data-action="remove-linked-soundpad"]').forEach(el => {
+            el.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const padId = el.dataset.padId;
+                await this.soundscape.removeLinkedSoundpadFromMood(this.currentMoodOnUI, padId);
             });
         });
 
@@ -590,7 +559,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
 
         // this.element.querySelectorAll('.sound-category').forEach(el => {
         //     const button = el.querySelector(".category-title");
-        //     const collapeDiv = el.querySelector(".soundscapeadv-container, .soundpad-list-container");
+        //     const collapeDiv = el.querySelector(".soundscapeadv-container");
         //     if (button && collapeDiv) {
         //         button.addEventListener("click", (e) => {
         //             const icon = e.currentTarget.querySelector("i");
@@ -901,8 +870,7 @@ export default class SoundscapeUI extends HandlebarsApplicationMixin(Application
         //console.warn("SoundConfig", soundConfig)
         const html_content = await foundry.applications.handlebars.renderTemplate(templatePath, { sound: soundConfig, sounds: soundConfig?.sounds, triggers: triggers, groups: this.soundscape.moods[moodId].groups });
         const isGroup = soundType == constants.SOUNDTYPE.GROUP_LOOP
-            || soundType == constants.SOUNDTYPE.GROUP_RANDOM
-            || soundType == constants.SOUNDTYPE.GROUP_SOUNDPAD;
+            || soundType == constants.SOUNDTYPE.GROUP_RANDOM;
         const buttons = [
             {
                 action: "save",

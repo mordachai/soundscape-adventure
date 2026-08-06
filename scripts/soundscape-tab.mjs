@@ -2,6 +2,8 @@ import Soundscape from "./soundscape.mjs";
 import SoundscapeAdventure from "./soundscape-adventure.mjs";
 import utils from "./utils/utils.mjs";
 import constants from "./utils/constants.mjs";
+import { promptFolderLoad, promptFileName, saveJsonToFolder } from "./utils/filePrompts.mjs";
+import { openSoundpadManager } from "./soundpad-adventure.mjs";
 
 const cNoteIcon = "fa-speaker";
 const cFolderIcon = "fa-plus";
@@ -54,88 +56,6 @@ class SoundscapeTab /*extends SidebarTab*/ {
 			mouseHoverCallBack: (pID) => { this.onMouseHoverNote(pID) },
 			onTickChange: (pID) => { this.onTickChange(pID) }
 		}
-	}
-
-	async promptFolderLoad() {
-		return new Promise((resolve) => {
-			const fp = new foundry.applications.apps.FilePicker.implementation({
-				type: "data",
-				callback: (folderPath) => resolve(folderPath),
-				type: "folder"
-			});
-
-			fp.browse();
-		});
-	}
-
-	async saveJsonToFolder(folderPath, fileName, data) {
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-		const file = new File([blob], `${fileName}.json`);
-
-		await foundry.applications.apps.FilePicker.implementation.upload("data", folderPath, file, {}, { notify: true });
-	}
-
-	async promptFileName() {
-		let inputElement;
-		const fields = foundry.applications.fields;
-
-		const textInput = fields.createTextInput({
-			name: "fileName",
-			placeholder: "Enter file name",
-			autofocus: true,
-			required: true
-		});
-
-		// Wrap it into a form group with label and hint
-		const textGroup = fields.createFormGroup({
-			input: textInput,
-			label: "File Name",
-			hint: "Select a file name without extension"
-		});
-
-		const checkInput = fields.createCheckboxInput({
-			name: "loadSubfolders",
-			checked: false
-		});
-		const checkGroup = fields.createFormGroup({
-			input: checkInput,
-			label: "Load sounds in subfolders",
-			hint: "Mark this option if you want to load sounds in subfolders (may take longer)",
-		});
-
-		// Create content container
-		const content = document.createElement("div");
-		content.appendChild(textGroup);
-		content.appendChild(checkGroup);
-		inputElement = content.querySelector("input[name='fileName']");
-		return foundry.applications.api.DialogV2.prompt({
-			window: { title: "Select a file name" },
-			content: content,
-			modal: true,
-			ok:
-			{
-				label: "Save",
-				icon: "fa-solid fa-floppy-disk",
-				callback: (event, button, dialog) => new foundry.applications.ux.FormDataExtended(button.form).object
-			},
-
-
-			rejectClose: false
-		},{parent: this});
-	}
-
-	async promptFileLoad(type = ".json") {
-		return new Promise((resolve, reject) => {
-			// Create the file picker
-			const fp = new foundry.applications.apps.FilePicker.implementation({
-				type: "data", // 'image', 'audio', 'video', or 'data'
-				current: "data", // initial directory
-				callback: (path) => resolve(path), // resolve with selected file path
-				extensions: [`.${type}`], // optional filter
-			});
-
-			fp.browse(); // open the picker
-		});
 	}
 
 	async render() {
@@ -199,12 +119,12 @@ class SoundscapeTab /*extends SidebarTab*/ {
 		let vNewSoundscapeButton = document.createElement("button");
 		vNewSoundscapeButton.classList.add("create-document", "create-entry");
 		vNewSoundscapeButton.onclick = (pEvent) => {
-			this.promptFolderLoad().then(async (folderPath) => {
+			promptFolderLoad().then(async (folderPath) => {
 				// Step 1: Choose a folder
 				if (!folderPath) return ui.notifications.warn("No folder selected.");
 
 				// Step 2: Ask for filename
-				const dialogResponse = (await this.promptFileName()); //?.fileName;
+				const dialogResponse = (await promptFileName(this)); //?.fileName;
 				const fileName = dialogResponse?.fileName;
 				const loadSubfolders = dialogResponse?.loadSubfolders || false;
 				utils.log(utils.getCallerInfo(), `Load sounds in subfolders: ${loadSubfolders}`, constants.LOGLEVEL.INFO);
@@ -219,7 +139,7 @@ class SoundscapeTab /*extends SidebarTab*/ {
 				};
 
 				// Step 4: Save it
-				await this.saveJsonToFolder(folderPath, fileName, exampleData);
+				await saveJsonToFolder(folderPath, fileName, exampleData);
 				//ui.notifications.info(`Saved ${fileName}.json to ${folderPath}`);
 
 				// Step 5: Add file to the local configuration
@@ -247,13 +167,29 @@ class SoundscapeTab /*extends SidebarTab*/ {
 		vNewSoundscapeButton.appendChild(vNewFolderIcon);
 		vNewSoundscapeButton.appendChild(vNewFolderLabel);
 
+		// soundpads manager
+		let vSoundpadsButton = document.createElement("button");
+		vSoundpadsButton.classList.add("create-document", "create-entry");
+		vSoundpadsButton.onclick = () => openSoundpadManager();
+
+		let vSoundpadsIcon = document.createElement("i");
+		vSoundpadsIcon.classList.add("fa-solid", "fa-grid-2");
+
+		let vSoundpadsLabel = document.createElement("label");
+		vSoundpadsLabel.innerHTML = "Soundpads";
+
+		vSoundpadsButton.appendChild(vSoundpadsIcon);
+		vSoundpadsButton.appendChild(vSoundpadsLabel);
+
 		if (!this.useoldUI) {
 			vLoadSoundscapeButton.style.flexGrow = "1";
 			vNewSoundscapeButton.style.flexGrow = "1";
+			vSoundpadsButton.style.flexGrow = "1";
 		}
 
 		vButtons.appendChild(vLoadSoundscapeButton);
 		vButtons.appendChild(vNewSoundscapeButton);
+		vButtons.appendChild(vSoundpadsButton);
 
 		vHeader.appendChild(vButtons);
 		const existing_header = this.tab.querySelector("header");

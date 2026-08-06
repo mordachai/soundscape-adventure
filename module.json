@@ -61,6 +61,10 @@
   "manifest": "placeholder",
   "readme": "https://github.com/piecesofcodecom/soundscape-adventure/blob/main/README.md",
   "flags": {
-    "allowBugReporter": true
+    "allowBugReporter": true,
+    "hotReload": {
+      "extensions": ["css", "hbs", "json", "js"],
+      "paths": ["css", "templates", "lang", "dist"]
+    }
   }
 }

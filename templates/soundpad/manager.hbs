@@ -1,0 +1,124 @@
+<div class="soundpad-manager-body{{#if listCollapsed}} list-collapsed{{/if}}{{#if selectedPad.color}} has-selected-color{{/if}}"{{#if selectedPad.color}} style="--soundpad-pad-color: var(--sa-soundpad-color-{{selectedPad.color}});"{{/if}}>
+    <aside class="soundpad-pad-list-pane">
+        {{#if stripActive}}
+        <button type="button" class="soundpad-list-drawer-toggle" data-action="toggleListHeader" data-tooltip="Toggle pad list header">
+            <i class="fas fa-chevron-{{#if listHeaderOpen}}up{{else}}down{{/if}}"></i>
+        </button>
+        {{/if}}
+        <div class="soundpad-list-drawer{{#if listHeaderOpen}} open{{/if}}">
+            <div class="soundpad-pad-list-header">
+                <h3>Soundpads</h3>
+                <div class="soundpad-pad-list-header-actions">
+                    <button type="button" class="soundpad-icon-btn" data-action="setRootFolder" data-tooltip="Set Soundpads root folder">
+                        <i class="fas fa-grid"></i>
+                    </button>
+                    <button type="button" class="soundpad-icon-btn" data-action="loadPad" data-tooltip="Load an existing Soundpad JSON">
+                        <i class="fas fa-arrow-down-to-line"></i>
+                    </button>
+                    <button type="button" class="soundpad-icon-btn" data-action="newPad" data-tooltip="New Soundpad">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="soundpad-search-wrap">
+                <input type="text" class="soundpad-search" name="search" placeholder="search..." value="{{searchFilter}}" />
+                {{#if searchFilter}}
+                <button type="button" class="soundpad-search-clear" data-tooltip="Clear search">
+                    <i class="fas fa-times"></i>
+                </button>
+                {{/if}}
+            </div>
+        </div>
+        <label class="soundpad-toggle-row">
+            <input type="checkbox" class="soundpad-only-selected-toggle"{{#if onlySelected}} checked{{/if}} />
+            <span class="soundpad-toggle-track"><span class="soundpad-toggle-knob"></span></span>
+            <span class="soundpad-toggle-label">Only selected</span>
+        </label>
+        <div class="soundpad-list-divider"></div>
+        {{#if showListPager}}
+        <div class="soundpad-pager">
+            <button type="button" class="soundpad-pager-btn" data-action="prevListPage"{{#unless canListPrev}} disabled{{/unless}}>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="soundpad-pager-page">{{listPage}}</span>
+            <button type="button" class="soundpad-pager-btn" data-action="nextListPage"{{#unless canListNext}} disabled{{/unless}}>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        {{/if}}
+        <ol class="soundpad-pad-list">
+            {{#if creatingPad}}
+            <li class="soundpad-pad-list-item soundpad-pad-list-item--new">
+                <input type="text" class="soundpad-pad-rename-input soundpad-new-pad-input" placeholder="New Soundpad" />
+            </li>
+            {{/if}}
+            {{#each soundpads as |pad|}}
+            {{> "modules/soundscape-adventure/templates/soundpad/parts/pad-list-item.hbs" pad=pad}}
+            {{else}}
+            <li class="soundpad-pad-list-empty">No soundpads yet.</li>
+            {{/each}}
+        </ol>
+    </aside>
+    <section class="soundpad-grid-pane{{#if stripActive}} strip-mode{{/if}}">
+        {{#unless stripActive}}
+        <div class="soundpad-grid-topbar">
+            <div class="soundpad-grid-topbar-left">
+                <button type="button" class="soundpad-list-toggle" data-action="toggleList" data-tooltip="Toggle Soundpad list">
+                    <i class="fas fa-chevron-{{#if listCollapsed}}right{{else}}left{{/if}}"></i>
+                </button>
+                {{#if selectedPad}}
+                <h2 class="soundpad-grid-title">{{selectedPad.name}}</h2>
+                {{/if}}
+            </div>
+            {{#if selectedPad}}
+            <div class="soundpad-preset-group">
+                <button type="button" class="soundpad-preset-btn{{#ifEquals gridPresetKey "3x7"}} active{{/ifEquals}}" data-action="setGridPreset" data-preset="3x7">3×7</button>
+                <button type="button" class="soundpad-preset-btn{{#ifEquals gridPresetKey "4x5"}} active{{/ifEquals}}" data-action="setGridPreset" data-preset="4x5">4×5</button>
+                <button type="button" class="soundpad-preset-btn{{#ifEquals gridPresetKey "10x2"}} active{{/ifEquals}}" data-action="setGridPreset" data-preset="10x2">10×2</button>
+            </div>
+            {{/if}}
+        </div>
+        {{/unless}}
+        {{#if showGridPager}}
+        <div class="soundpad-grid-pager-row">
+            <div class="soundpad-pager">
+                <button type="button" class="soundpad-pager-btn" data-action="prevGridPage"{{#unless canGridPrev}} disabled{{/unless}}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="soundpad-pager-page">{{gridPage}}</span>
+                <button type="button" class="soundpad-pager-btn" data-action="nextGridPage"{{#unless canGridNext}} disabled{{/unless}}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+        {{/if}}
+        {{#if selectedPad}}
+        <div class="soundpad-grid-box{{#if stripActive}} strip-mode{{/if}}">
+            {{#if stripActive}}
+            <button type="button" class="soundpad-list-toggle soundpad-strip-list-toggle" data-action="toggleList" data-tooltip="Toggle Soundpad list">
+                <i class="fas fa-chevron-{{#if listCollapsed}}right{{else}}left{{/if}}"></i>
+            </button>
+            {{/if}}
+            <div class="soundpad-grid preset-{{gridPresetKey}}" style="--soundpad-cols: {{cols}}; --soundpad-rows: {{visibleRows}};">
+                {{#each gridSlots as |slot|}}
+                {{> "modules/soundscape-adventure/templates/soundpad/parts/grid-cell.hbs" slot=slot}}
+                {{/each}}
+            </div>
+            {{#if stripActive}}
+            <div class="soundpad-strip-presets">
+                <button type="button" class="soundpad-preset-btn soundpad-strip-close-btn" data-action="close" data-tooltip="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button type="button" class="soundpad-preset-btn{{#ifEquals gridPresetKey "3x7"}} active{{/ifEquals}}" data-action="setGridPreset" data-preset="3x7">3×7</button>
+                <button type="button" class="soundpad-preset-btn{{#ifEquals gridPresetKey "4x5"}} active{{/ifEquals}}" data-action="setGridPreset" data-preset="4x5">4×5</button>
+                <button type="button" class="soundpad-preset-btn active" data-action="setGridPreset" data-preset="10x2">10×2</button>
+            </div>
+            {{/if}}
+        </div>
+        {{else}}
+        <div class="soundpad-empty-state">
+            <p>Select a Soundpad on the left, or create a new one.</p>
+        </div>
+        {{/if}}
+    </section>
+</div>
