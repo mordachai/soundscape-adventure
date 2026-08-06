@@ -47,10 +47,6 @@ export default class MoodConfig {
         this.sounds = moodConfig.sounds;
         this.categories = moodConfig?.categories ? moodConfig.categories : [];
         this.groups = [];
-        const soundpadui = this.categories.filter(el => el.type == constants.SOUNDTYPE.SOUNDPADUI);
-        if (soundpadui.length == 0) {
-            this.categories.push({ id: "", name: "None", type: constants.SOUNDTYPE.SOUNDPADUI, collapsed: false, sounds: [] })
-        }
         if (moodConfig?.groups?.length > 0) {
             for (let i = 0; i < moodConfig.groups.length; i++) {
                 this.groups.push(new GroupConfig(moodConfig.groups[i]))
@@ -382,8 +378,8 @@ export default class MoodConfig {
     /**
      * Find a sound or group by ID
      * Use config.type with constants.SOUNDTYPE to determine what it is:
-     * - Types 0-3: Regular sounds (AMBIENCE, LOOP, RANDOM, SOUNDPAD)
-     * - Types 4-6: Groups (GROUP_LOOP, GROUP_RANDOM, GROUP_SOUNDPAD)
+     * - Types 0-2: Regular sounds (AMBIENCE, LOOP, RANDOM)
+     * - Types 4-5: Groups (GROUP_LOOP, GROUP_RANDOM)
      * @param {string} id - The sound or group ID
      * @returns {SoundConfig|GroupConfig|null}
      */
@@ -879,18 +875,8 @@ export default class MoodConfig {
     // ==========================================
 
     /**
-     * Get library sounds (SOUNDPAD type) sorted by name
-     * @returns {SoundConfig[]} Array of library sounds
-     */
-    getLibrarySounds() {
-        return this.sounds
-            .filter(sound => sound.type === constants.SOUNDTYPE.SOUNDPAD)
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    /**
      * Get sounds organized for the UI view
-     * Returns sounds grouped by type (Loop, Random, SoundpadUI) with categories
+     * Returns sounds grouped by type (Loop, Random) with categories
      * @returns {Array} Array of sound type sections with categories and sounds
      */
     getOrganizedSounds() {
@@ -908,11 +894,6 @@ export default class MoodConfig {
                 type: constants.SOUNDTYPE.RANDOM,
                 name: "Random",
                 categories: this._getCategoriesForType(constants.SOUNDTYPE.RANDOM)
-            },
-            {
-                type: constants.SOUNDTYPE.SOUNDPADUI,
-                name: "Soundpad UI",
-                categories: this._getCategoriesForType(constants.SOUNDTYPE.SOUNDPADUI)
             }
         ];
 
@@ -993,12 +974,6 @@ export default class MoodConfig {
             let sectionIndex = 0;
             if (soundClone.type === constants.SOUNDTYPE.RANDOM) {
                 sectionIndex = 1;
-            } else if (soundClone.type === constants.SOUNDTYPE.SOUNDPAD ||
-                       soundClone.type === constants.SOUNDTYPE.GROUP_SOUNDPAD) {
-                // Skip library sounds - they go in the library panel
-                continue;
-            } else if (soundClone.type === constants.SOUNDTYPE.SOUNDPADUI) {
-                sectionIndex = 2;
             }
 
             // Find category index

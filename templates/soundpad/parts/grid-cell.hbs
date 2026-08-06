@@ -1,0 +1,15 @@
+<div class="soundpad-cell{{#if slot.empty}} empty{{/if}}{{#if slot.cell.icon}} has-icon{{/if}}{{#if slot.cell.playing}} playing{{/if}}{{#if slot.cell.looping}} looping{{/if}}"
+    data-position="{{slot.position}}"
+    {{#if slot.cell}}data-cell-id="{{slot.cell.id}}"{{/if}}>
+    {{#if slot.cell}}
+    {{#ifNotEquals slot.cell.icon ''}}
+    <img class="soundpad-cell-icon" src="{{slot.cell.icon}}" alt="" />
+    <div class="soundpad-cell-caption">{{slot.cell.name}}</div>
+    {{else}}
+    <div class="soundpad-cell-name">{{slot.cell.name}}</div>
+    {{/ifNotEquals}}
+    {{#ifNotEquals slot.cell.loopMode 'once'}}
+    <i class="soundpad-cell-loop-badge fas fa-repeat" data-tooltip="Loop: {{slot.cell.loopMode}}"></i>
+    {{/ifNotEquals}}
+    {{/if}}
+</div>

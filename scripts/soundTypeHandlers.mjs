@@ -30,10 +30,15 @@ export async function playSoundWithFade(soundConfig, sound, playlist) {
     // foundryVTT suports fade out nativally. We can use that instead of implementing our own fade out logic.
     await sound.update({ fade: soundConfig.fadeOut > 0 ? soundConfig.fadeOut * 1000 : null });
 
+    // Must be awaited: an in-flight, un-awaited update racing the playing:true
+    // update below (two overlapping embedded-document updates on the same
+    // Playlist) can have its response land after playSound()'s and clobber the
+    // local doc back to playing:false with no "stop"/"end" ever firing — the
+    // loop then silently hangs forever awaiting an "end" that will never come.
     if (soundConfig.fadeIn > 0) {
-        sound.update({ volume: 0 });
+        await sound.update({ volume: 0 });
     } else {
-        sound.update({ volume: soundConfig.volume });
+        await sound.update({ volume: soundConfig.volume });
     }
     await playlist.playSound(sound);
     
@@ -58,7 +63,7 @@ export async function playSoundWithFade(soundConfig, sound, playlist) {
             1.0,
             now + Number(soundConfig.fadeIn)
         );
-        sound.update({ volume: soundConfig.volume });
+        await sound.update({ volume: soundConfig.volume });
     }
 
     await new Promise(r => setTimeout(r, 0));
@@ -235,24 +240,6 @@ const randomHandler = {
 };
 
 /**
- * Handler for SOUNDPAD sounds (type 3) and SOUNDPADUI (type 7)
- */
-const soundpadHandler = {
-    async play(soundConfig, context) {
-        const sound = await context.playlist.sounds.get(soundConfig.id);
-        if (sound) {
-            sound.update({ "repeat": false });
-            await playSoundWithFade(soundConfig, sound, context.playlist);
-        }
-    },
-
-    async stop(soundConfig, context) {
-        const playlistSound = await context.playlist.sounds.get(soundConfig.id);
-        await stopSoundWithFade(soundConfig, playlistSound, context.playlist);
-    }
-};
-
-/**
  * Handler for GROUP_LOOP sounds (type 4)
  */
 const groupLoopHandler = {
@@ -332,37 +319,14 @@ const groupRandomHandler = {
 };
 
 /**
- * Handler for GROUP_SOUNDPAD sounds (type 6)
- */
-const groupSoundpadHandler = {
-    async play(soundConfig, context) {
-        const sound = await context.playlist.sounds.get(soundConfig.id);
-        if (sound) {
-            sound.update({ "repeat": false });
-            await playSoundWithFade(soundConfig, sound, context.playlist);
-        }
-    },
-
-    async stop(soundConfig, context) {
-        const sounds = context.mood.getSoundByGroup(soundConfig.id);
-        for (let i = 0; i < sounds.length; i++) {
-            await context.playlist.stopSound({ id: sounds[i].id });
-        }
-    }
-};
-
-/**
  * Registry of handlers by sound type
  */
 const handlers = {
     [constants.SOUNDTYPE.AMBIENCE]: loopHandler,  // Treat ambience like loop
     [constants.SOUNDTYPE.LOOP]: loopHandler,
     [constants.SOUNDTYPE.RANDOM]: randomHandler,
-    [constants.SOUNDTYPE.SOUNDPAD]: soundpadHandler,
     [constants.SOUNDTYPE.GROUP_LOOP]: groupLoopHandler,
     [constants.SOUNDTYPE.GROUP_RANDOM]: groupRandomHandler,
-    [constants.SOUNDTYPE.GROUP_SOUNDPAD]: groupSoundpadHandler,
-    [constants.SOUNDTYPE.SOUNDPADUI]: soundpadHandler,  // Same as soundpad
 };
 
 /**
@@ -371,7 +335,7 @@ const handlers = {
  * @returns {Object} Handler with play() and stop() methods
  */
 export function getHandler(soundType) {
-    return handlers[soundType] || soundpadHandler;  // Default to soundpad handler
+    return handlers[soundType] || loopHandler;
 }
 
 /**
@@ -381,8 +345,7 @@ export function getHandler(soundType) {
  */
 export function isGroupType(soundType) {
     return soundType === constants.SOUNDTYPE.GROUP_LOOP ||
-        soundType === constants.SOUNDTYPE.GROUP_RANDOM ||
-        soundType === constants.SOUNDTYPE.GROUP_SOUNDPAD;
+        soundType === constants.SOUNDTYPE.GROUP_RANDOM;
 }
 
 export default {

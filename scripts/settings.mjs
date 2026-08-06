@@ -83,13 +83,38 @@ Hooks.once('init', () => {
     type: Object
   });
 
-  //   game.settings.register('soundscape-adventure', "configCategory", {
-  //     name: "Soundpad UI Category",
-  //     hint: "The category of soundpad sounds to use in the UI.",
-  //     scope: "world",
-  //     config: true,
-  //     type: String,
-  // });
+  game.settings.register('soundscape-adventure', 'soundpads', {
+    name: "The current list of soundpads in the world",
+    hint: "The current list of soundpads in the world",
+    scope: 'world',
+    config: false,
+    type: String,
+    default: "",
+  });
+
+  game.settings.register('soundscape-adventure', 'soundpad-folder-id', {
+    name: "The Playlist folder id containing every Soundpad's own Playlist",
+    scope: 'world',
+    config: false,
+    type: String,
+    default: "",
+  });
+
+  game.settings.register('soundscape-adventure', 'soundpad-root', {
+    name: "Root data folder new Soundpad JSON files are saved into",
+    scope: 'world',
+    config: false,
+    type: String,
+    default: "",
+  });
+
+  game.settings.register('soundscape-adventure', 'soundpad-grid-preset', {
+    name: "Soundpad grid size preset (3x7 / 5x5 / 10x1)",
+    scope: 'client',
+    config: false,
+    type: String,
+    default: "5x5",
+  });
 });
 
 
@@ -125,8 +150,9 @@ Hooks.once('ready', () => {
     'modules/soundscape-adventure/templates/soundscape/parts/sound-group.hbs',
     'modules/soundscape-adventure/templates/soundscape/parts/sound-card.hbs',
     'modules/soundscape-adventure/templates/soundscape/parts/sound-mixer.hbs',
-    'modules/soundscape-adventure/templates/soundscape/parts/sound-list.hbs',
-    'modules/soundscape-adventure/templates/soundscape/parts/sound-category.hbs'
+    'modules/soundscape-adventure/templates/soundscape/parts/sound-category.hbs',
+    'modules/soundscape-adventure/templates/soundpad/parts/pad-list-item.hbs',
+    'modules/soundscape-adventure/templates/soundpad/parts/grid-cell.hbs'
   ]);
   // News is a GM-facing changelog — players should never see it.
   if (game.user.isGM) newsDialog();

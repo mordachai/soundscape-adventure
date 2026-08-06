@@ -1,0 +1,13 @@
+<li class="soundpad-pad-list-item{{#if pad.selected}} active{{/if}}" data-action="selectPad" data-pad-id="{{pad.id}}">
+    <label class="soundpad-pad-checkbox" data-pad-id="{{pad.id}}">
+        <input type="checkbox"{{#if pad.checked}} checked{{/if}} />
+        <span class="soundpad-pad-checkbox-box"></span>
+    </label>
+    <span class="soundpad-pad-name">{{pad.name}}</span>
+    {{#if pad.looping}}
+    <i class="fas fa-repeat soundpad-pad-loop-badge" data-tooltip="A sound is looping in this Soundpad"></i>
+    {{/if}}
+    <a class="soundpad-pad-delete" data-action="deletePad" data-pad-id="{{pad.id}}" data-tooltip="Delete Soundpad">
+        <i class="fas fa-trash"></i>
+    </a>
+</li>

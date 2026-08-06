@@ -608,18 +608,6 @@
             &:hover { color: var(--button-hover-background-color); }
         }
 
-        &__copy {
-            flex: 0 0 auto;
-            width: 1.6rem;
-            height: 1.6rem;
-            color: var(--button-text-color);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.12s ease, color 0.12s ease;
-            &:hover { color: var(--button-hover-background-color); }
-        }
-
         &__play {
             flex: 0 0 auto;
             width: 1.6rem;
@@ -1011,7 +999,6 @@
 
             &:hover { background: var(--sa-bg-subtle); }
             &:hover .sa-lib-item__remove,
-            &:hover .sa-lib-item__copy,
             &:hover .sa-lib-item__pl { opacity: 1; }
 
             &.is-missing {

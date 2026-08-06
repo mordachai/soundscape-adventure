@@ -13,6 +13,7 @@ lerna-debug.log*
 *.txt
 audio_Server/
 sample-root-soundscapes/
+.playwright-mcp/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -98,6 +99,9 @@ out
 .nuxt
 dist
 
+# Local symlink/junction farm for testing in a Foundry install
+/build/
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js
@@ -140,3 +144,7 @@ dist
 *.md
 !TUTORIALS.md
 !README.md
+
+# Release archives
+*.zip
+

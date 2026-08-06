@@ -20,7 +20,6 @@ To create a mood you need to type the mood name and save it. Each mood has three
 - **Library**: Available sounds from the playlist
 - **Loop**: Continuous sounds until mood stops
 - **Random**: Randomly triggered sounds
-- **Soundpad**: One-time sounds (also available in the Soundpad UI)
 
 ## Moving Sounds
 Drag and drop sounds between Library, categories, and sound types.
@@ -83,8 +82,8 @@ Play at intervals (multiple times or once). Groups cycle through sounds without 
 
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/cfIsCf8nMNo)
 
-## Soundpad Sounds
-Quick-access sounds for GMs with dedicated UI. Add images for identification.
+## Soundpads
+Soundpads are standalone grids of quick-access sounds, managed from their own "Soundpads" button in the audio sidebar (or the Soundpad scene-control button). Create a Soundpad, drag sounds from the Sound Library onto its cells, and give each cell an icon. Click a cell to play it once, or right-click to start it looping (Loop simple, Loop random between a Min/Max time, or Loop interval). Drag a filled cell to rearrange it, and double-click a filled cell to configure its icon, name, and loop settings.
 
 [![Watch the video](https://www.pngkey.com/png/full/333-3339295_98-buck-social-watch-video-logo-png.png)](https://youtu.be/CKvNwOUZbQ8)
 
